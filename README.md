@@ -1,6 +1,6 @@
 # MuseApi
 
-Mapi 是 [muse2api](https://github.com/czg86389-hub/muse2api) 的 Rust 重写版：把 Muse (muse.ai) 逆向封装为 OpenAI 兼容接口 —— 对话、文生图、文生视频 / 图生视频、多账号池轮转与 48h 自动续期，带一个账号池控制台。
+Mapi 是 muse2api 的 Rust 重写版：把 Muse (muse.ai) 逆向封装为 OpenAI 兼容接口 —— 对话、文生图、文生视频 / 图生视频、多账号池轮转与 48h 自动续期，带一个账号池控制台。
 
 
 ## 快速开始
