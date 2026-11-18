@@ -1,0 +1,1207 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mapi · 账号池控制台</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6.5' fill='%231d1a16'/%3E%3Cpath d='M12 4Q13.8 10.2 20 12Q13.8 13.8 12 20Q10.2 13.8 4 12Q10.2 10.2 12 4Z' fill='white'/%3E%3Ccircle cx='18.3' cy='18.3' r='1.3' fill='white'/%3E%3C/svg%3E">
+<style>
+  /* 配色抄壹面板 webui/style.css :root（暖纸色系），组件语言照 .btn/.chip/.pill-tabs/.toggle/.script-table/.field 靠 */
+  :root{
+    --bg:#f4f1ea; --bg-soft:#efe9dd; --card:#ffffff;
+    --ink:#1d1a16; --ink-2:#4c463e; --sub:#857e70; --faint:#a89f8f;
+    --line:#e6dfd0; --line-soft:#efe9db; --chip:#f1ebdd;
+    --green:#2f9e5f; --green-bg:#e5f4ea;
+    --amber:#c07f10; --amber-bg:#faf0da;
+    --gray:#8d867a; --gray-bg:#efede8;
+    --red:#d24545; --red-bg:#fbecec;
+    --shadow:0 1px 2px rgba(74,60,35,.05),0 10px 30px rgba(74,60,35,.07);
+    --shadow-lift:0 2px 4px rgba(74,60,35,.06),0 18px 44px rgba(74,60,35,.16);
+    --r-lg:16px; --r-md:14px; --r-sm:10px;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC",sans-serif;
+    font-size:14px;line-height:1.55;-webkit-font-smoothing:antialiased;min-height:100vh;
+  }
+  ::selection{background:#f3d98b}
+  code{font-family:ui-monospace,SFMono-Regular,Consolas,"Cascadia Mono",monospace}
+
+  .hwrap{max-width:1240px;margin:0 auto;padding:16px 28px 4px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+  .logo{display:flex;align-items:center;gap:9px;font-weight:700;font-size:17px;letter-spacing:.02em;flex-wrap:wrap}
+  .logo .dot{width:9px;height:9px;border-radius:99px;background:var(--ink)}
+  .logo small{color:var(--sub);font-weight:400;font-size:12px}
+  .pills{display:flex;gap:8px;flex-wrap:wrap;margin-left:auto;align-items:center}
+  .pill{display:inline-flex;align-items:center;gap:7px;font-size:12px;padding:7px 14px;border-radius:99px;
+    background:var(--card);box-shadow:var(--shadow);color:var(--ink-2);white-space:nowrap}
+  .pill b{color:var(--ink);font-weight:700}
+  .pill .led{width:8px;height:8px;border-radius:99px;background:var(--gray)}
+  .pill.on .led{background:var(--green);box-shadow:0 0 0 3px var(--green-bg)}
+  .pill.off .led{background:var(--red);box-shadow:0 0 0 3px var(--red-bg)}
+  .ghostbtn{background:var(--card);border:1px solid var(--line);color:var(--ink-2);border-radius:99px;
+    padding:6px 13px;font-size:12.5px;font-weight:600;white-space:nowrap;cursor:pointer;font-family:inherit}
+  .ghostbtn:hover{border-color:#d5cbb4}
+  .ghostbtn.solid{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .ro-state{font-size:12px;color:var(--faint);white-space:nowrap}
+  .ronote{display:flex;align-items:center;gap:7px;background:var(--chip);color:var(--ink-2);
+    border-radius:var(--r-sm);padding:8px 12px;font-size:12.5px;margin:0 0 12px}
+  .ronote b{color:var(--ink)}
+  /* 未登录只读态：写操作一律置灰不可用（信息照常显示）；服务端同时真拦 */
+  button.locked,.minibtn.locked{opacity:.42;box-shadow:none;cursor:not-allowed}
+  .switch.locked{opacity:.42;cursor:not-allowed}
+  select.locked,input.locked,textarea.locked{opacity:.55;cursor:not-allowed}
+
+  main{max-width:1240px;margin:0 auto;padding:10px 28px 44px}
+
+  /* 页签：壹面板 .pill-tabs */
+  .tabs{display:inline-flex;background:var(--bg-soft);border-radius:99px;padding:4px;gap:2px;margin:2px 0 14px}
+  .tab{border-radius:99px;padding:7px 18px;font-size:13.5px;font-weight:600;color:var(--ink-2);
+    background:none;border:0;cursor:pointer;font-family:inherit;transition:all .15s ease}
+  .tab.on{background:var(--ink);color:#fff;box-shadow:0 4px 10px rgba(29,26,22,.18)}
+  .pane{display:none}
+  .pane.on{display:block}
+
+  .card{background:var(--card);border-radius:var(--r-lg);box-shadow:var(--shadow);padding:18px 20px;margin-bottom:14px}
+  .card>h3{margin:0 0 6px;font-size:15px;font-weight:700;display:flex;align-items:center;gap:9px}
+  .card>h3 .tag{font-size:12px;font-weight:500;color:var(--ink-2);background:var(--chip);border-radius:99px;padding:3px 10px}
+  .card>h3 .sp{margin-left:auto;display:flex;gap:8px}
+  .hint{color:var(--sub);font-size:12.5px;margin:2px 0 12px}
+  .hint b{color:var(--ink)}
+
+  label{display:block;font-size:12.5px;font-weight:600;color:var(--sub);margin:0 0 7px}
+  input[type=text],input[type=number],input[type=password],textarea,select{
+    width:100%;background:#fff;color:var(--ink);border:1px solid var(--line);border-radius:var(--r-sm);
+    padding:9px 12px;font-size:13.5px;outline:none;font-family:inherit}
+  textarea{background:#fffdf8;resize:vertical;line-height:1.65}
+  input:focus,textarea:focus,select:focus{outline:2px solid var(--ink);border-color:transparent}
+
+  button{background:var(--ink);color:#fff;border:0;border-radius:99px;padding:9px 18px;
+    font-size:13.5px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;
+    box-shadow:0 6px 16px rgba(29,26,22,.20);transition:transform .12s ease,box-shadow .12s ease}
+  button:active{transform:scale(.97)}
+  button.ghost{background:var(--card);border:1px solid var(--line);color:var(--ink-2);box-shadow:none}
+  button.ghost:hover{border-color:#d5cbb4}
+  button.danger{background:var(--card);border:1px solid #f0cfcf;color:var(--red);box-shadow:none}
+  button.mini{padding:6px 13px;font-size:12.5px}
+  button.primary-lg{padding:10px 24px;font-size:14px}
+  .minibtn{display:inline-block;background:var(--card);border:1px solid var(--line);color:var(--ink-2);border-radius:99px;
+    padding:6px 13px;font-size:12.5px;font-weight:600;white-space:nowrap;cursor:pointer;text-decoration:none;font-family:inherit}
+  .minibtn:hover{border-color:#d5cbb4}
+  .minibtn.dng{border-color:#f0cfcf;color:var(--red)}
+
+  /* 开关：壹面板 .toggle */
+  .switch{position:relative;display:inline-block;width:46px;height:27px;border-radius:99px;background:#ddd5c2;flex:0 0 46px;cursor:pointer;vertical-align:middle;transition:background .15s ease}
+  .switch::after{content:"";position:absolute;top:3px;left:3px;width:21px;height:21px;border-radius:99px;background:#fff;box-shadow:0 2px 6px rgba(0,0,0,.18);transition:left .15s ease}
+  .switch.on{background:var(--ink)}
+  .switch.on::after{left:22px}
+  .switch.sm{width:38px;height:22px;flex-basis:38px}
+  .switch.sm::after{width:16px;height:16px}
+  .switch.sm.on::after{left:19px}
+
+  /* 表格：壹面板 .script-table 规格 */
+  .tblwrap{overflow-x:auto}
+  table{width:100%;border-collapse:collapse}
+  th{font-size:12px;color:var(--faint);font-weight:600;text-align:left;padding:10px 14px;white-space:nowrap;border-bottom:1px solid var(--line-soft)}
+  td{padding:11px 14px;font-size:13px;border-bottom:1px solid var(--line-soft);vertical-align:middle}
+  tbody tr:last-child td{border-bottom:0}
+  tbody tr:hover{background:#faf8f1}
+  tr.disabled td{opacity:.55}
+  .mono{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;color:var(--sub)}
+
+  /* 徽章：壹面板 .audit-badge */
+  .badge{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;border-radius:99px;padding:2px 9px;white-space:nowrap}
+  .badge::before{content:"";width:6px;height:6px;border-radius:99px;background:currentColor}
+  .badge.ok{background:var(--green-bg);color:var(--green)}
+  .badge.bad{background:var(--red-bg);color:var(--red)}
+  .badge.warn{background:var(--amber-bg);color:var(--amber)}
+  .badge.mute{background:var(--gray-bg);color:var(--gray)}
+  .acts{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+  .errsum{max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block;vertical-align:middle}
+  .empty{color:var(--faint);font-size:13px;padding:16px 4px}
+
+  /* 设置：壹面板 .form-row 两列 */
+  .frow{display:flex;align-items:center;gap:16px;padding:13px 0;border-bottom:1px solid var(--line-soft);flex-wrap:wrap}
+  .frow:first-of-type{padding-top:6px}
+  .frow .flabel{flex:1;min-width:200px}
+  .frow .flabel b{display:block;font-size:14px;font-weight:600}
+  .frow .flabel span{font-size:12.5px;color:var(--sub)}
+  .frow .fctl{flex:0 0 230px;display:flex;justify-content:flex-end;align-items:center}
+  .frow.save{border-bottom:0;justify-content:flex-end;padding-bottom:2px}
+  .vernum{font-size:15px;font-weight:700}
+  .stepper{display:inline-flex;align-items:center;gap:2px;background:var(--bg);border-radius:99px;padding:3px}
+  .stepper button{width:28px;height:28px;border-radius:99px;background:var(--card);box-shadow:var(--shadow);font-weight:700;color:var(--ink);padding:0;font-size:14px}
+  .stepper b{min-width:38px;text-align:center;font-size:14px}
+
+  /* 媒体库：壹面板 .mgrid/.mcard 规格 */
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:14px}
+  .tile{position:relative;background:var(--card);border-radius:var(--r-lg);box-shadow:var(--shadow);padding:10px;overflow:hidden}
+  .tile .thumb{aspect-ratio:4/3;border-radius:var(--r-sm);overflow:hidden;background:var(--bg-soft);margin-bottom:9px;display:flex;align-items:center;justify-content:center;cursor:pointer}
+  .tile .thumb img,.tile .thumb video{width:100%;height:100%;object-fit:cover;display:block}
+  .tile .kind{position:absolute;top:17px;left:17px;font-size:11px;font-weight:700;padding:2px 8px;border-radius:6px;background:rgba(20,18,15,.78);color:#fff;z-index:2}
+  .tile .meta{padding:0 2px;font-size:12px;color:var(--sub)}
+  .tile .meta .nm{font-family:ui-monospace,Menlo,Consolas,monospace;color:var(--ink);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .tile .meta .sz{margin-top:3px;color:var(--faint);font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .tile .meta .ac{display:flex;gap:6px;margin-top:9px}
+  .tile .meta .ac .minibtn{flex:1 1 0;min-width:0;text-align:center;padding-left:4px;padding-right:4px}
+  .tile .sel{position:absolute;top:14px;right:14px;z-index:3;width:20px;height:20px;margin:0;accent-color:var(--ink);cursor:pointer}
+  .tile .sel.locked{opacity:.42;cursor:not-allowed}
+  .mtools{display:flex;gap:8px;align-items:center;margin:0 0 12px;flex-wrap:wrap}
+  .btndng{color:var(--red);border-color:#f0cfcf}
+
+  /* 导入：模式分段切换 */
+  .seg{display:inline-flex;background:var(--bg-soft);border-radius:99px;padding:3px;gap:2px;margin:0 0 14px}
+  .segbtn{border-radius:99px;padding:6px 16px;font-size:13px;font-weight:600;color:var(--ink-2);background:none;border:0;cursor:pointer;font-family:inherit;box-shadow:none;transition:all .15s ease}
+  .segbtn.on{background:var(--ink);color:#fff;box-shadow:0 4px 10px rgba(29,26,22,.18)}
+  .mode{display:none}
+  .mode.on{display:block}
+  .sublabel{font-size:12.5px;font-weight:600;color:var(--sub);margin:16px 0 8px}
+  .comprow{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--line-soft);font-size:13px}
+  .comprow span:first-child{flex:1}
+  .phaseline{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px;color:var(--sub);background:var(--bg);border-radius:var(--r-sm);padding:9px 12px;margin-top:12px}
+  .phaseline b{color:var(--ink)}
+  .frame{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#171410;margin-top:6px}
+  .frame .fbar{display:flex;gap:6px;align-items:center;background:#26221d;padding:8px 12px}
+  .frame .fbar i{width:10px;height:10px;border-radius:99px;background:#554c3e;display:block}
+  .frame .fbar em{font-style:normal;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;color:#a89f8f;margin-left:8px}
+  .frame .fbody{display:flex;align-items:center;justify-content:center;min-height:180px}
+  .frame .fbody img{width:100%;display:block;cursor:pointer}
+  .frame .fempty{color:#a89f8f;font-size:13px;padding:38px 12px;text-align:center}
+  .fnote{font-size:12px;color:var(--faint);margin-top:6px}
+  .keyrow{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;align-items:center}
+  .keyrow input{flex:1;min-width:180px}
+  .recline{display:flex;gap:10px;align-items:center;background:var(--bg);border-radius:var(--r-sm);padding:9px 12px;font-size:13px;flex-wrap:wrap}
+
+  /* 登录弹窗 */
+  .scrim{position:fixed;inset:0;background:rgba(244,241,234,.48);display:none;z-index:40}
+  .scrim.on{display:block}
+  .modal{position:fixed;left:50%;top:11vh;transform:translateX(-50%);z-index:41;
+    width:min(392px,calc(100vw - 40px));background:var(--card);border-radius:var(--r-lg);
+    box-shadow:var(--shadow-lift);padding:22px 24px 20px;display:none}
+  .modal.on{display:block}
+  .modal .x{position:absolute;top:10px;right:12px;width:30px;height:30px;border:0;border-radius:99px;
+    background:none;color:var(--faint);font-size:19px;line-height:1;cursor:pointer;font-family:inherit;box-shadow:none;padding:0}
+  .modal .x:hover{background:var(--bg-soft);color:var(--ink-2)}
+  .mbrand{display:flex;align-items:center;gap:8px;font-weight:700;font-size:15.5px;letter-spacing:.02em;margin-bottom:14px}
+  .mbrand .dot{width:8px;height:8px;border-radius:99px;background:var(--ink)}
+  .mbrand small{color:var(--sub);font-weight:400;font-size:12px}
+  .modal h3{margin:0 0 4px;font-size:16px;font-weight:700}
+  .modal .hint{margin:0 0 16px}
+  .loginerr{display:none;font-size:12.5px;border-radius:var(--r-sm);padding:8px 12px;margin:0 0 12px}
+  .loginerr.bad{display:block;background:var(--red-bg);color:var(--red)}
+  .loginerr.warn{display:block;background:var(--amber-bg);color:var(--amber)}
+  .loginbtn{width:100%;padding:11px 24px}
+  .loginnote{font-size:12px;color:var(--faint);margin-top:10px}
+  .modal.wide{width:min(520px,calc(100vw - 40px))}
+  .resetscope{margin:0 0 16px;padding-left:18px;font-size:13px;color:var(--ink-2);line-height:1.75}
+  .resetscope b{color:var(--red)}
+  .resetbtns{display:flex;gap:8px;justify-content:flex-end}
+
+  /* 媒体放大浮层 */
+  .lightbox{position:fixed;inset:0;z-index:60;background:rgba(29,26,22,.93);display:none;
+    flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:26px 20px;cursor:pointer}
+  .lightbox.on{display:flex}
+  .lightbox img,.lightbox video{max-width:min(1180px,94vw);max-height:84vh;border-radius:var(--r-md);
+    box-shadow:0 18px 50px rgba(0,0,0,.45);background:#171410;cursor:default}
+  .lightbox .lbcap{color:#f4f1ea;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;
+    max-width:94vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .lightbox .lbx{position:absolute;top:16px;right:18px;width:38px;height:38px;border:0;border-radius:99px;
+    background:rgba(244,241,234,.14);color:#f4f1ea;font-size:21px;line-height:1;cursor:pointer;font-family:inherit;padding:0}
+  .lightbox .lbx:hover{background:rgba(244,241,234,.28)}
+  .lightbox audio{width:min(560px,90vw);cursor:default}
+
+  /* 非图媒体占位面（文档/音频/其他）：后缀大字，不再拿 <img> 硬套出坏图 */
+  .tile .thumb .face{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+    width:100%;height:100%;user-select:none}
+  .tile .thumb .face b{font-size:30px;font-weight:800;letter-spacing:.05em;color:var(--ink-2);line-height:1.1}
+  .tile .thumb .face b.sm{font-size:21px}
+  .tile .thumb .face span{font-size:11px;letter-spacing:.16em;color:var(--faint)}
+  .lbmsg{color:#f4f1ea;font-size:14px;line-height:1.9;background:rgba(244,241,234,.1);
+    border-radius:var(--r-md);padding:26px 34px;cursor:default;text-align:center}
+  .lbmsg a{color:#f3d98b}
+
+  /* 文档查看浮层：纸面卡 + 顶栏（文件名/下载）+ 可滚动正文 */
+  .lbdoc{width:min(860px,94vw);max-height:84vh;display:flex;flex-direction:column;background:var(--bg);
+    border-radius:var(--r-md);box-shadow:0 18px 50px rgba(0,0,0,.45);overflow:hidden;cursor:default;text-align:left}
+  .lbdoc .docbar{display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--card);
+    border-bottom:1px solid var(--line);font-family:ui-monospace,Menlo,Consolas,monospace;
+    font-size:12.5px;color:var(--ink-2)}
+  .lbdoc .docbar .nm{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .lbdoc .docbar a{flex:none;text-decoration:none}
+  .lbdoc .docbody{overflow:auto;padding:18px 22px;color:var(--ink);font-size:13.5px;line-height:1.65}
+  .lbdoc .docbody pre{margin:0;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12.5px;
+    line-height:1.6;white-space:pre-wrap;word-break:break-word}
+  .lbdoc .docbody h1,.lbdoc .docbody h2,.lbdoc .docbody h3,.lbdoc .docbody h4,.lbdoc .docbody h5,.lbdoc .docbody h6{margin:14px 0 6px;line-height:1.35}
+  .lbdoc .docbody h1{font-size:19px}.lbdoc .docbody h2{font-size:16.5px}.lbdoc .docbody h3{font-size:14.5px}
+  .lbdoc .docbody h4,.lbdoc .docbody h5,.lbdoc .docbody h6{font-size:13.5px}
+  .lbdoc .docbody p{margin:6px 0}
+  .lbdoc .docbody ul,.lbdoc .docbody ol{margin:6px 0;padding-left:22px}
+  .lbdoc .docbody code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12px;
+    background:var(--chip);border-radius:5px;padding:1px 5px}
+  .lbdoc .docbody pre.codeblk{background:#26221d;color:#f4f1ea;border-radius:var(--r-sm);
+    padding:12px 14px;overflow:auto;margin:8px 0;white-space:pre;word-break:normal}
+  .lbdoc .docbody pre.codeblk code{background:none;padding:0;color:inherit}
+  .lbdoc .docbody blockquote{margin:8px 0;padding:2px 12px;border-left:3px solid var(--line);color:var(--ink-2)}
+  .lbdoc .docbody hr{border:0;border-top:1px solid var(--line);margin:12px 0}
+  .lbdoc .docbody a{color:#8a6d1f}
+
+  #toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(20px);z-index:50;
+    background:var(--ink);color:#fff;font-size:13px;border-radius:99px;padding:10px 20px;
+    opacity:0;pointer-events:none;transition:all .2s ease;max-width:min(680px,calc(100vw - 40px));text-align:center}
+  #toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+  #toast.bad{background:var(--red)}
+
+  footer{max-width:1240px;margin:0 auto;padding:14px 28px 26px;border-top:1px solid var(--line);color:var(--sub);font-size:12px;line-height:1.8}
+  footer b{color:var(--ink);font-weight:600}
+  .footline{margin-top:10px;text-align:center;color:var(--faint);font-size:12px;letter-spacing:.02em}
+  .footline a{color:inherit;text-decoration:none;border-bottom:1px dotted var(--faint)}
+  .footline a:hover{color:var(--ink-2);border-bottom-color:var(--ink-2)}
+  .logomark{width:27px;height:27px;flex:none;display:block}/* 底色 #1d1a16 = --ink，内嵌白色星火 */
+  /* 顶栏 GitHub 徽章 pill（与 .pill 同族） */
+  a.pill{text-decoration:none;cursor:pointer}
+  a.pill:hover{color:var(--ink)}
+  .pill svg{width:14px;height:14px;fill:currentColor;flex:none}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hwrap">
+    <div class="logo"><svg class="logomark" viewBox="0 0 24 24" aria-hidden="true"><rect width="24" height="24" rx="6.5" fill="#1d1a16"/><path d="M12 4Q13.8 10.2 20 12Q13.8 13.8 12 20Q10.2 13.8 4 12Q10.2 10.2 12 4Z" fill="#fff"/><circle cx="18.3" cy="18.3" r="1.3" fill="#fff"/></svg>Mapi <small>账号池控制台</small></div>
+    <div class="pills">
+      <span class="pill" id="pillSvc"><span class="led"></span>服务 <b>—</b></span>
+      <span class="pill" id="pillAcc"><span class="led"></span>账号 <b>—</b></span>
+      <span class="pill" id="pillWin">浏览器 <b>—</b></span>
+      <span class="pill">版本 <b id="pillVer">0.2.29</b></span>
+      <a class="pill" href="https://github.com/YanG-1989" target="_blank" rel="noopener"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>GitHub</a>
+      <span class="ro-state" id="roState">未登录 · 只读</span>
+      <button class="ghostbtn" id="loginBtn">登录</button>
+    </div>
+  </div>
+</header>
+
+<main>
+  <nav class="tabs">
+    <button class="tab on" data-t="acct">账号</button>
+    <button class="tab" data-t="import">导入</button>
+    <button class="tab" data-t="exec">执行账</button>
+    <button class="tab" data-t="media">媒体库</button>
+    <button class="tab" data-t="cfg">设置</button>
+  </nav>
+
+  <!-- 账号 -->
+  <div class="pane on" id="pane-acct">
+    <div class="card">
+      <h3>账号 <span class="tag" id="accCount">0</span>
+        <span class="sp"><button class="ghost mini" id="accRefresh">刷新</button></span>
+      </h3>
+      <div class="ronote" id="roNote">未登录时只能查看，点右上角<b>「登录」</b>后可操作。</div>
+      <div class="tblwrap">
+        <table>
+          <thead><tr><th>标签</th><th>账号 ID</th><th>启用</th><th>使用次数</th><th>最近状态</th><th>操作</th></tr></thead>
+          <tbody id="accBody"></tbody>
+        </table>
+      </div>
+      <div class="empty" id="accEmpty" style="display:none">还没有账号，去「导入」页签添加。</div>
+    </div>
+  </div>
+
+  <!-- 导入 -->
+  <div class="pane" id="pane-import">
+    <div class="card">
+      <h3>导入账号</h3>
+      <div class="seg">
+        <button class="segbtn on" data-m="paste">粘贴 Cookie 串</button>
+        <button class="segbtn" data-m="remote">在 VPS 上直接登录</button>
+      </div>
+
+      <div class="mode on" id="mode-paste">
+        <div class="hint">从浏览器复制 <b>muse.ai</b> 的 Cookie 串粘贴进来即可。必须包含：<code>hatch_sess</code>；批量导入每行一个账号，格式 <code>标签 | cookie串</code>（标签可省略）。</div>
+        <label>账号标签（单条导入用）</label>
+        <input type="text" id="impLabel" placeholder="例如 muse-main" style="max-width:340px">
+        <div class="sublabel">Cookie 串</div>
+        <textarea id="impCookie" rows="4" placeholder="hatch_sess=...; hatch_vml=..."></textarea>
+        <div class="sublabel">或批量（每行一个）</div>
+        <textarea id="impBatch" rows="4" placeholder="acc-01 | hatch_sess=...; hatch_vml=..."></textarea>
+        <div style="margin-top:14px;display:flex;gap:8px;align-items:center">
+          <button class="primary-lg" id="impSubmit" data-w>导入账号</button>
+          <button class="ghost" id="impClear">清空</button>
+          <span class="mono" id="impResult"></span>
+        </div>
+      </div>
+
+      <div class="mode" id="mode-remote">
+        <div class="hint">在服务器上开一个远程浏览器，你在画面里完成 muse.ai 登录，登录好自动把账号导入账号池。</div>
+        <div class="comprow"><span>虚拟显示 Xvfb</span><span class="badge mute" id="compXvfb">检测中</span></div>
+        <div class="comprow"><span>浏览器 Chromium</span><span class="badge mute" id="compChrome">检测中</span></div>
+        <div style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <button class="ghost mini" id="riInstall" data-w>安装组件</button>
+          <button class="ghost mini" id="riUninstall" data-w>卸载组件</button>
+          <span class="mono" id="riSetupState"></span>
+        </div>
+        <div style="margin-top:14px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <button class="primary-lg" id="riStart" data-w>开始远程导入</button>
+          <span class="mono" id="riState"></span>
+        </div>
+        <div class="phaseline" id="riPhases" style="display:none">
+          <span data-ph="launching">打开远程浏览器</span> →
+          <span data-ph="waiting_login">等登录</span> →
+          <span data-ph="uploading">导入账号池</span>
+          <span class="badge info" id="riPhaseBadge" style="background:#e7e9fb;color:#4a54b8">进行中</span>
+        </div>
+        <div class="frame" id="riFrame" style="display:none">
+          <div class="fbar"><i></i><i></i><i></i><em>muse.ai · 远程浏览器（点画面即点击，约 1.5 秒刷新一帧）</em></div>
+          <div class="fbody"><img id="riImg" alt="远程浏览器画面"></div>
+        </div>
+        <div class="keyrow" id="riKeys" style="display:none">
+          <input type="text" id="riText" placeholder="要输入到浏览器的文字">
+          <button class="ghost mini" id="riType">输入到浏览器</button>
+          <button class="ghost mini" data-key="Enter">回车</button>
+          <button class="ghost mini" data-key="Backspace">退格</button>
+          <button class="ghost mini" data-key="Tab">Tab</button>
+          <button class="ghost mini" data-key="Escape">Esc</button>
+          <button class="danger mini" id="riCancel">结束本轮</button>
+        </div>
+        <div class="fnote">用法：在画面里点输入框，用上面的输入行打字（或直接点画面后用按键按钮）；登录完成（拿到完整会话）后自动导入，不用再点任何按钮。</div>
+        <div class="sublabel">最近一次导入</div>
+        <div class="recline" id="riLatest">暂无记录</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 执行账 -->
+  <div class="pane" id="pane-exec">
+    <div class="card">
+      <h3>执行账 <span class="tag">最近 20 条</span>
+        <span class="sp"><button class="ghost mini" id="execRefresh">刷新</button><button class="ghost mini btndng" id="execClear" data-w>清空</button></span>
+      </h3>
+      <div class="tblwrap">
+        <table>
+          <thead><tr><th>时间</th><th>类型</th><th>账号</th><th>结果</th><th>错误摘要</th></tr></thead>
+          <tbody id="execBody"></tbody>
+        </table>
+      </div>
+      <div class="empty" id="execEmpty" style="display:none">暂无记录。</div>
+    </div>
+  </div>
+
+  <!-- 媒体库 -->
+  <div class="pane" id="pane-media">
+    <div class="card">
+      <h3>媒体库 <span class="tag" id="mediaCount">0 个文件</span>
+        <span class="sp"><button class="ghost mini" id="mediaRefresh">刷新</button></span>
+      </h3>
+      <div class="hint">收割与生成落盘的图片 / 视频，点缩略图放大查看；「下载」存到本地，「删除」清理（含重复图），勾选后可批量删除。</div>
+      <div class="mtools">
+        <button class="ghost mini" id="mediaSelAll">全选</button>
+        <button class="ghost mini btndng" id="mediaDelSel" data-w>删除所选（<span id="mediaSelN">0</span>）</button>
+      </div>
+      <div class="grid" id="mediaGrid"></div>
+      <div class="empty" id="mediaEmpty" style="display:none">暂无文件。</div>
+    </div>
+  </div>
+
+  <!-- 设置 -->
+  <div class="pane" id="pane-cfg">
+    <div class="card">
+      <h3>状态与开关 <span class="tag">运行时设置 · 改完即时生效</span></h3>
+      <div class="frow">
+        <div class="flabel"><b>版本号</b><span>Mapi 当前版本</span></div>
+        <div class="fctl"><span class="vernum" id="cfgVer">0.2.29</span></div>
+      </div>
+      <div class="frow" id="directLinkRow" style="display:none">
+        <div class="flabel"><b>直登链接</b><span>带 Key 的登录链接，点开即登录；链接里含 Key，勿外传</span></div>
+        <div class="fctl" style="flex:0 1 470px">
+          <input type="text" id="directLink" readonly style="min-width:0">
+          <button class="ghostbtn" id="directLinkCopy" style="margin-left:8px">复制</button>
+        </div>
+      </div>
+      <div class="frow">
+        <div class="flabel"><b>窗口上限</b><span>同时开着的账号浏览器数</span></div>
+        <div class="fctl">
+          <span class="stepper">
+            <button id="winMinus" data-w>−</button><b id="winVal">1</b><button id="winPlus" data-w>＋</button>
+          </span>
+        </div>
+      </div>
+      <div class="frow">
+        <div class="flabel"><b>单号叠窗上限</b><span>单个账号同时在跑的窗口会话数（chat 与媒体任务合计）；触顶时池派改派他号、钉号排队等空位</span></div>
+        <div class="fctl">
+          <span class="stepper">
+            <button id="winCapMinus" data-w>−</button><b id="winCapVal">6</b><button id="winCapPlus" data-w>＋</button>
+          </span>
+        </div>
+      </div>
+      <div class="frow">
+        <div class="flabel"><b>窗空闲关闭</b><span>窗口无任务在跑、空闲超过此时长（分钟）自动整窗关闭，下次有活自动重开；在跑的窗不关</span></div>
+        <div class="fctl">
+          <span class="stepper">
+            <button id="winIdleMinus" data-w>−</button><b id="winIdleVal">30</b><button id="winIdlePlus" data-w>＋</button>
+          </span>
+        </div>
+      </div>
+      <div class="frow">
+        <div class="flabel"><b>窗口实况</b><span>各号在跑会话数与等位数（打开设置页时读取；在等位＝任务在排队等空位，不是卡死）</span></div>
+        <div class="fctl"><span class="mono" id="winLive">—</span></div>
+      </div>
+      <div class="frow">
+        <div class="flabel"><b>常驻</b><span>账号浏览器保持长开（每任务新开、完事即关 = 关）</span></div>
+        <div class="fctl"><span class="switch" id="resSwitch" data-w></span></div>
+      </div>
+      <div class="frow">
+        <div class="flabel"><b>分配模式</b><span>未指定账号的请求如何派号</span></div>
+        <div class="fctl">
+          <select id="allocSel" data-w style="max-width:230px">
+            <option value="pool">池轮派</option>
+            <option value="single">单号锁定</option>
+            <option value="strict">严格指定</option>
+          </select>
+        </div>
+      </div>
+      <div class="frow" id="allocAccRow" style="display:none">
+        <div class="flabel"><b>锁定账号</b><span>单号锁定模式下固定使用的账号（ID 或标签）</span></div>
+        <div class="fctl"><input type="text" id="allocAcc" data-w placeholder="账号 ID 或标签"></div>
+      </div>
+      <div class="frow save">
+        <button class="primary-lg" id="cfgSave" data-w>保存</button>
+      </div>
+    </div>
+    <div class="card">
+      <h3>关于</h3>
+      <div class="sublabel" style="margin-top:18px">接口对应规范</div>
+      <p class="hint" style="margin-bottom:10px">以 <b>OpenAI /v1 契约</b>为底座标准，自有扩展只做加法、不改标准字段语义。规范版本 <b>v1</b>，机器可读出处：<code>GET /v1/standard</code>。</p>
+      <div class="tblwrap">
+        <table>
+          <thead><tr><th>类别</th><th>接口</th><th>属性</th></tr></thead>
+          <tbody>
+            <tr><td>文字</td><td class="mono">POST /v1/chat/completions · POST /v1/responses</td><td><span class="badge ok">原生</span></td></tr>
+            <tr><td>图片 · 同步</td><td class="mono">POST /v1/images/generations · POST /v1/images/edits</td><td><span class="badge ok">原生</span></td></tr>
+            <tr><td>图片 · 异步</td><td class="mono">POST /v1/images/tasks</td><td><span class="badge warn">自扩</span></td></tr>
+            <tr><td>视频</td><td class="mono">POST /v1/videos（异步任务制）</td><td><span class="badge warn">自扩</span></td></tr>
+            <tr><td>音频</td><td class="mono">对话产物：chat 回执 audios[]，经 /v1/media 取用</td><td><span class="badge warn">自扩</span></td></tr>
+            <tr><td>文件</td><td class="mono">对话产物：chat 回执 files[{name, url}]（want_files），经 /v1/media 取用</td><td><span class="badge warn">自扩</span></td></tr>
+            <tr><td>任务回执</td><td class="mono">统一骨架 status / result / bytes</td><td><span class="badge warn">自扩</span></td></tr>
+            <tr><td>错误分类</td><td class="mono">category 九类：model_refusal · account_unavailable · auth_expired · queue_full · timeout · upstream_error · invalid_request · not_found · send_unconfirmed</td><td><span class="badge warn">自扩</span></td></tr>
+            <tr><td>模型</td><td class="mono">muse-spark（文字）· muse-image（图片）· muse-video（视频）</td><td><span class="badge warn">自扩</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <div class="footline" style="margin-top:0">© 2026 YanG · <a href="https://github.com/YanG-1989" target="_blank" rel="noopener">GitHub</a></div>
+</footer>
+
+<div class="scrim" id="scrim"></div>
+<div class="modal" id="loginModal" role="dialog" aria-label="登录">
+  <button class="x" id="loginClose" aria-label="关闭">×</button>
+  <div class="mbrand"><span class="dot"></span>Mapi <small>账号池控制台</small></div>
+  <h3>登录</h3>
+  <p class="hint">登录后可操作账号、导入与设置；不登录也能直接查看。</p>
+  <div class="loginerr" id="loginErr"></div>
+  <label>访问密码（API Key）</label>
+  <input type="password" id="loginKey" placeholder="输入 API Key" autocomplete="current-password">
+  <div style="height:14px"></div>
+  <button class="loginbtn" id="loginGo">登录</button>
+  <div class="loginnote">登录密码与接口的 API Key 相同。</div>
+</div>
+
+<div class="modal wide" id="resetModal" role="dialog" aria-label="恢复原始状态">
+  <button class="x" id="resetClose" aria-label="关闭">×</button>
+  <h3>恢复原始状态</h3>
+  <p class="hint">账号 <b id="resetAcc">—</b></p>
+  <ul class="resetscope">
+    <li>清除该账号在 muse 侧保存的<b>关于你的一切</b>：全部记忆、全部侧边对话、工作区文件与媒体；</li>
+    <li>删除是<b>永久的、不进回收站</b>，无法恢复；</li>
+    <li>账号与登录保留，不删账号——等于让它从头开始认识你；</li>
+    <li>已知边界：主聊天历史无法通过对话删除（生产不在主聊天，不受影响）；</li>
+    <li>过程在主聊天里自动进行（问存量 → 下清理令 → 确认执行 → 复查裁决），约数分钟、最长约 60 分钟；结果写入账号注记与执行账。</li>
+  </ul>
+  <div class="resetbtns">
+    <button class="ghost" id="resetCancel">取消</button>
+    <button class="danger" id="resetGo">确认恢复</button>
+  </div>
+</div>
+
+<div class="lightbox" id="lightbox" role="dialog" aria-label="放大查看">
+  <button class="lbx" id="lbClose" aria-label="关闭">×</button>
+  <div id="lbBody"></div>
+  <div class="lbcap" id="lbCap"></div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+"use strict";
+const $ = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
+let loggedIn = false;
+let toastTimer = null;
+
+function esc(s){ return String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+function toast(msg, bad){
+  const t = $("#toast"); t.textContent = msg; t.className = bad ? "on bad" : "on";
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.className = ""; }, 3400);
+}
+async function api(path, opts){
+  opts = opts || {};
+  try {
+    const r = await fetch(path, opts);
+    let body = null;
+    try { body = await r.json(); } catch(e) {}
+    return { status: r.status, body: body };
+  } catch(e) { return { status: 0, body: null }; }
+}
+function jpost(path, obj){ return api(path, { method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(obj || {}) }); }
+function fmtBytes(n){
+  if (n == null) return "—";
+  if (n < 1024) return n + " B";
+  if (n < 1024*1024) return (n/1024).toFixed(0) + " KB";
+  return (n/1024/1024).toFixed(1) + " MB";
+}
+function fmtAgo(ts){
+  if (!ts) return "";
+  const d = Math.max(0, Math.floor(Date.now()/1000) - ts);
+  if (d < 60) return d + " 秒前";
+  if (d < 3600) return Math.floor(d/60) + " 分钟前";
+  if (d < 86400) return Math.floor(d/3600) + " 小时前";
+  return Math.floor(d/86400) + " 天前";
+}
+function fmtClock(ts){
+  if (!ts) return "—";
+  const d = new Date(ts*1000), p = n => String(n).padStart(2, "0");
+  return p(d.getHours()) + ":" + p(d.getMinutes()) + ":" + p(d.getSeconds());
+}
+function fmtDayTime(ts){
+  if (!ts) return "";
+  const d = new Date(ts*1000), p = n => String(n).padStart(2, "0");
+  return p(d.getMonth()+1) + "-" + p(d.getDate()) + " " + p(d.getHours()) + ":" + p(d.getMinutes());
+}
+
+/* ---------- 页签 ---------- */
+$$(".tab").forEach(b => b.addEventListener("click", () => {
+  $$(".tab").forEach(x => x.classList.remove("on"));
+  $$(".pane").forEach(x => x.classList.remove("on"));
+  b.classList.add("on");
+  $("#pane-" + b.dataset.t).classList.add("on");
+  if (b.dataset.t === "exec") loadExec();
+  if (b.dataset.t === "media") loadMedia();
+  if (b.dataset.t === "import") loadRemote();
+}));
+
+/* ---------- 登录 ---------- */
+function applyLock(){
+  $$("[data-w]").forEach(el => el.classList.toggle("locked", !loggedIn));
+  $$("#accBody .switch, #accBody .minibtn").forEach(el => el.classList.toggle("locked", !loggedIn));
+  $("#roNote").style.display = loggedIn ? "none" : "flex";
+  $("#roState").textContent = loggedIn ? "已登录" : "未登录 · 只读";
+  const lb = $("#loginBtn");
+  lb.textContent = loggedIn ? "退出" : "登录";
+  lb.classList.toggle("solid", loggedIn);
+  // 直登链接行含 key：只在已登录时显示并现取
+  $("#directLinkRow").style.display = loggedIn ? "flex" : "none";
+  if (loggedIn) loadDirectLink();
+}
+async function loadDirectLink(){
+  const r = await api("/admin/direct-link");
+  if (r.body && r.body.ok && r.body.path) {
+    $("#directLink").value = location.origin + r.body.path;
+    $("#directLinkRow").style.display = "flex";
+  } else {
+    $("#directLinkRow").style.display = "none";
+  }
+}
+$("#directLinkCopy").addEventListener("click", async () => {
+  const inp = $("#directLink");
+  if (!inp.value) return;
+  let ok = false;
+  if (navigator.clipboard && window.isSecureContext) {
+    try { await navigator.clipboard.writeText(inp.value); ok = true; } catch(e) {}
+  }
+  if (!ok) {
+    inp.focus(); inp.select();
+    try { ok = document.execCommand("copy"); } catch(e) {}
+  }
+  toast(ok ? "直登链接已复制" : "复制失败，请手动选中复制", !ok);
+});
+async function loadSession(){
+  const r = await api("/admin/session");
+  loggedIn = !!(r.body && r.body.logged_in);
+  applyLock();
+}
+function openLogin(){ $("#scrim").classList.add("on"); $("#loginModal").classList.add("on"); $("#loginErr").className = "loginerr"; setTimeout(() => $("#loginKey").focus(), 30); }
+function closeLogin(){ $("#scrim").classList.remove("on"); $("#loginModal").classList.remove("on"); }
+$("#loginBtn").addEventListener("click", async () => {
+  if (loggedIn) {
+    await jpost("/admin/logout", {});
+    loggedIn = false; applyLock(); toast("已退出登录");
+  } else openLogin();
+});
+$("#loginClose").addEventListener("click", closeLogin);
+$("#scrim").addEventListener("click", () => { closeLogin(); closeReset(); });
+document.addEventListener("keydown", e => { if (e.key === "Escape") { closeLogin(); closeReset(); } });
+async function doLogin(){
+  const key = $("#loginKey").value.trim();
+  const err = $("#loginErr");
+  if (!key) { err.className = "loginerr bad"; err.textContent = "请输入 API Key"; return; }
+  const r = await jpost("/admin/login", { key: key });
+  if (r.status === 200 && r.body && r.body.ok) {
+    loggedIn = true; $("#loginKey").value = ""; applyLock(); closeLogin(); toast("登录成功");
+  } else if (r.status === 429) {
+    err.className = "loginerr warn"; err.textContent = (r.body && r.body.detail) || "失败次数过多，已锁定，请稍后再试";
+  } else {
+    err.className = "loginerr bad"; err.textContent = (r.body && r.body.detail) || "密码不正确，请重试";
+  }
+}
+$("#loginGo").addEventListener("click", doLogin);
+$("#loginKey").addEventListener("keydown", e => { if (e.key === "Enter") doLogin(); });
+
+/* ---------- 未登录点到被锁的写控件：弹登录框＋提示（不再静默无反应） ---------- */
+/* 捕获阶段统一兜底全部 data-w 控件（含账号行内的开关/小按钮）；已登录态不介入。 */
+document.addEventListener("click", e => {
+  if (loggedIn) return;
+  const el = e.target.closest("[data-w], #accBody .switch, #accBody .minibtn");
+  if (!el || !el.classList.contains("locked")) return;
+  e.preventDefault();
+  e.stopPropagation();
+  openLogin();
+  toast("未登录只能查看，写操作请先登录");
+}, true);
+
+/* ---------- 状态 pills ---------- */
+async function loadStatus(){
+  const r = await api("/admin/status");
+  if (!r.body) return;
+  const st = r.body.stats || {};
+  $("#pillSvc").className = "pill on";
+  $("#pillSvc").querySelector("b").textContent = "正常";
+  $("#pillAcc").querySelector("b").textContent = (st.enabled || 0) + " 可用 · " + (st.disabled || 0) + " 禁用";
+  const wl = await api("/admin/window-limit");
+  if (wl.body) $("#pillWin").querySelector("b").textContent = (wl.body.active || 0) + " / " + (wl.body.limit || 0);
+}
+async function loadVersion(){
+  const r = await api("/admin/update/check");
+  if (r.body && r.body.current_version) { $("#pillVer").textContent = r.body.current_version; $("#cfgVer").textContent = r.body.current_version; }
+}
+
+/* ---------- 账号 ---------- */
+function statusCell(a){
+  let badge, note = a.note || "";
+  if (a.ok === true) badge = '<span class="badge ok">正常</span>';
+  else if (a.ok === false) badge = '<span class="badge bad">异常</span>';
+  else badge = '<span class="badge mute">未测</span>';
+  const tail = [fmtAgo(a.checked_at), note].filter(Boolean).join(" · ");
+  const vcap = a.video_capable === "no" ? ' <span class="badge bad">不能视频</span>' : "";
+  return badge + vcap + (tail ? ' <span class="mono" title="' + esc(note) + '">' + esc(tail) + "</span>" : "");
+}
+async function loadAccounts(){
+  const r = await api("/admin/accounts");
+  const list = (r.body && r.body.accounts) || [];
+  $("#accCount").textContent = list.length;
+  $("#accEmpty").style.display = list.length ? "none" : "block";
+  $("#accBody").innerHTML = list.map(a =>
+    "<tr" + (a.enabled ? "" : ' class="disabled"') + ">" +
+    "<td><b>" + esc(a.label || "") + "</b></td>" +
+    '<td class="mono">' + esc(a.id) + "</td>" +
+    '<td><span class="switch sm' + (a.enabled ? " on" : "") + '" data-act="toggle" data-id="' + esc(a.id) + '"></span></td>' +
+    "<td>" + (a.use_count || 0) + "</td>" +
+    "<td>" + statusCell(a) + "</td>" +
+    '<td><div class="acts">' +
+      '<span class="minibtn" data-act="test" data-id="' + esc(a.id) + '">测试</span>' +
+      '<span class="minibtn" data-act="vcap" data-id="' + esc(a.id) + '" data-v="' + esc(a.video_capable || "unknown") + '">视频：' + ({unknown: "未知", yes: "可", no: "不能"})[a.video_capable || "unknown"] + '</span>' +
+      '<span class="minibtn dng" data-act="reset" data-id="' + esc(a.id) + '" data-label="' + esc(a.label || "") + '">恢复原始状态</span>' +
+      '<span class="minibtn dng" data-act="del" data-id="' + esc(a.id) + '">删除</span>' +
+    "</div></td></tr>"
+  ).join("");
+  applyLock();
+  loadStatus();
+}
+$("#accBody").addEventListener("click", async e => {
+  const el = e.target.closest("[data-act]");
+  if (!el || !loggedIn) return;
+  const id = el.dataset.id, act = el.dataset.act;
+  if (act === "toggle") {
+    const on = !el.classList.contains("on");
+    const r = await api("/admin/accounts/" + id, { method: "PATCH", headers: {"Content-Type": "application/json"}, body: JSON.stringify({ enabled: on }) });
+    if (r.status === 200) { el.classList.toggle("on", on); el.closest("tr").classList.toggle("disabled", !on); loadStatus(); }
+    else toast((r.body && r.body.detail) || "操作失败", true);
+  } else if (act === "vcap") {
+    const order = ["unknown", "yes", "no"];
+    const next = order[(order.indexOf(el.dataset.v) + 1) % 3];
+    const r = await api("/admin/accounts/" + id, { method: "PATCH", headers: {"Content-Type": "application/json"}, body: JSON.stringify({ video_capable: next }) });
+    if (r.status === 200) { toast("视频能力已标为「" + ({unknown: "未知", yes: "可", no: "不能"})[next] + "」"); loadAccounts(); }
+    else toast((r.body && r.body.detail) || "操作失败", true);
+  } else if (act === "test") {
+    el.textContent = "测试中…";
+    const r = await jpost("/admin/accounts/" + id + "/test", {});
+    el.textContent = "测试";
+    if (r.body) toast(r.body.message || (r.body.ok ? "会话有效" : "测试未通过"), !r.body.ok);
+    else toast("测试请求失败", true);
+    loadAccounts();
+  } else if (act === "reset") {
+    openReset(id, el.dataset.label || id, el);
+  } else if (act === "del") {
+    if (!confirm("确定删除这个账号？")) return;
+    const r = await api("/admin/accounts/" + id, { method: "DELETE" });
+    if (r.status === 200) { toast("已删除"); loadAccounts(); }
+    else toast((r.body && r.body.detail) || "删除失败", true);
+  }
+});
+$("#accRefresh").addEventListener("click", loadAccounts);
+
+/* ---------- 恢复原始状态（0.2.8）：确认框＋启动＋轮询 ---------- */
+let resetTarget = null, resetBtnEl = null;
+const resetTimers = {};
+function openReset(id, label, el){
+  resetTarget = id; resetBtnEl = el || null;
+  $("#resetAcc").textContent = label + "（" + id + "）";
+  closeLogin();
+  $("#scrim").classList.add("on"); $("#resetModal").classList.add("on");
+}
+function closeReset(){ $("#resetModal").classList.remove("on"); if (!$("#loginModal").classList.contains("on")) $("#scrim").classList.remove("on"); }
+$("#resetClose").addEventListener("click", closeReset);
+$("#resetCancel").addEventListener("click", closeReset);
+$("#resetGo").addEventListener("click", async () => {
+  if (!resetTarget) return;
+  const id = resetTarget, el = resetBtnEl;
+  const r = await jpost("/admin/accounts/" + id + "/reset", {});
+  closeReset();
+  if (r.status === 200 && r.body && r.body.status === "started") {
+    toast("已启动恢复原始状态，结果写入账号注记与执行账");
+    pollReset(id, el);
+  } else if (r.body && r.body.status === "busy") {
+    toast("该账号正在恢复中");
+    pollReset(id, el);
+  } else toast((r.body && r.body.detail) || "启动失败", true);
+});
+function pollReset(id, el){
+  if (resetTimers[id]) return;
+  const btn = el || document.querySelector('#accBody [data-act="reset"][data-id="' + id + '"]');
+  if (btn) btn.textContent = "恢复中…";
+  resetTimers[id] = setInterval(async () => {
+    const r = await api("/admin/accounts/" + id + "/reset");
+    const b = r.body || {};
+    const cur = document.querySelector('#accBody [data-act="reset"][data-id="' + id + '"]') || btn;
+    if (b.running) { if (cur) cur.textContent = "恢复中 · " + (b.step || ""); return; }
+    clearInterval(resetTimers[id]); delete resetTimers[id];
+    if (cur) cur.textContent = "恢复原始状态";
+    const lr = b.last_result || {};
+    if (lr.verdict === "success") toast("恢复原始状态完成：记忆已清");
+    else if (lr.verdict === "partial") toast("恢复原始状态：部分完成（残留见执行账）", true);
+    else if (lr.verdict) toast("恢复原始状态未完成：" + (lr.stopped || ""), true);
+    loadAccounts(); loadExec();
+  }, 3000);
+}
+
+/* ---------- 导入：粘贴 ---------- */
+$("#impClear").addEventListener("click", () => { $("#impLabel").value = ""; $("#impCookie").value = ""; $("#impBatch").value = ""; $("#impResult").textContent = ""; });
+$("#impSubmit").addEventListener("click", async () => {
+  if (!loggedIn) return;
+  const label = $("#impLabel").value.trim(), cookie = $("#impCookie").value.trim(), batch = $("#impBatch").value.trim();
+  if (!cookie && !batch) { toast("先粘贴 Cookie 串或批量内容", true); return; }
+  let last = null;
+  if (batch) last = await jpost("/admin/accounts", { batch: batch });
+  else last = await jpost("/admin/accounts", { label: label, cookie_header: cookie });
+  if (last.status === 200 && last.body) {
+    const n = last.body.count || (last.body.added || []).length;
+    $("#impResult").textContent = "已导入 " + n + " 个" + (last.body.warning ? "（" + last.body.warning + "）" : "");
+    toast("导入成功：" + n + " 个账号");
+    loadAccounts();
+  } else {
+    toast((last.body && last.body.detail) || "导入失败", true);
+  }
+});
+
+/* ---------- 导入：远程 ---------- */
+$$(".segbtn").forEach(b => b.addEventListener("click", () => {
+  $$(".segbtn").forEach(x => x.classList.remove("on"));
+  $$(".mode").forEach(x => x.classList.remove("on"));
+  b.classList.add("on");
+  $("#mode-" + b.dataset.m).classList.add("on");
+  if (b.dataset.m === "remote") loadRemote();
+}));
+let riToken = null, riRunId = null, riFrameTimer = null, riStatTimer = null, riSetupTimer = null;
+function compBadge(el, present, path){
+  el.className = "badge " + (present ? "ok" : "bad");
+  el.textContent = present ? "已就绪" : "未安装";
+  el.title = path || "";
+}
+function phaseText(ph){
+  return { launching: "打开远程浏览器", waiting_login: "等登录", uploading: "导入账号池", done: "已结束" }[ph] || ph || "";
+}
+async function loadRemote(){
+  const r = await api("/admin/remote-import");
+  if (!r.body) return;
+  const comps = r.body.components || [];
+  const xv = comps.find(c => c.key === "xvfb"), ch = comps.find(c => c.key === "browser");
+  if (xv) compBadge($("#compXvfb"), xv.present, xv.path);
+  if (ch) compBadge($("#compChrome"), ch.present, ch.path);
+  // 运行组件装卸（作业轮询，照壹面板形态）：状态在 setup 字段，来源账数在 ledger_count
+  const setup = r.body.setup || {};
+  const setupRunning = setup.state === "installing" || setup.state === "uninstalling";
+  const allPresent = comps.length > 0 && comps.every(c => c.present);
+  $("#riInstall").style.display = (!allPresent && !setupRunning) ? "" : "none";
+  $("#riUninstall").style.display = ((r.body.ledger_count || 0) > 0 && !setupRunning) ? "" : "none";
+  $("#riSetupState").textContent = setupRunning
+    ? (setup.message || "")
+    : (setup.state === "error" ? ("⚠ " + (setup.message || "")) : (setup.state === "done" ? (setup.message || "") : ""));
+  if (setupRunning) { if (!riSetupTimer) riSetupTimer = setInterval(loadRemote, 3000); }
+  else if (riSetupTimer) { clearInterval(riSetupTimer); riSetupTimer = null; }
+  const latest = r.body.latest;
+  if (latest) {
+    let txt;
+    if (latest.status === "succeeded") txt = "✅ " + esc(latest.label || "") + "（" + esc(latest.account_id || "") + "）· cookie " + (latest.cookie_count || 0) + " 条 · 已导入";
+    else if (latest.status === "cancelled") txt = "已取消：" + esc(latest.error || "");
+    else txt = "失败：" + esc(latest.error || latest.status || "");
+    $("#riLatest").innerHTML = "<span>" + txt + '</span><span class="mono">' + fmtDayTime(latest.finished_at || latest.started_at) + "</span>";
+  }
+  if (r.body.session && !riToken) {
+    $("#riState").textContent = "有一轮远程导入进行中（本页未持有令牌）";
+    $("#riStart").classList.add("locked");
+  }
+}
+function riSetPhase(ph){
+  $$("#riPhases [data-ph]").forEach(s => { s.style.fontWeight = s.dataset.ph === ph ? "700" : "400"; s.style.color = s.dataset.ph === ph ? "var(--ink)" : ""; });
+  $("#riPhaseBadge").textContent = ph === "done" ? "已结束" : "进行中 · " + phaseText(ph);
+}
+async function riPollStatus(){
+  const r = await api("/admin/remote-import");
+  if (!r.body) return;
+  if (r.body.session && r.body.session.run_id === riRunId) { riSetPhase(r.body.session.phase); return; }
+  // 会话结束
+  clearInterval(riFrameTimer); clearInterval(riStatTimer); riFrameTimer = riStatTimer = null;
+  riSetPhase("done");
+  const latest = r.body.latest;
+  if (latest && latest.status === "succeeded") { toast("远程导入成功：" + (latest.label || "")); loadAccounts(); }
+  else if (latest) toast("远程导入结束：" + (latest.error || latest.status || ""), latest.status === "failed");
+  riToken = null; riRunId = null;
+  $("#riKeys").style.display = "none";
+  // 终态清画面：藏回画面区并清掉最后一帧（恢复初始态），状态文案（阶段/最近一次）保持
+  $("#riFrame").style.display = "none";
+  $("#riImg").removeAttribute("src");
+  $("#riState").textContent = "";
+  loadRemote();
+}
+async function riPollFrame(){
+  if (!riToken) return;
+  const r = await api("/admin/remote-import/frame?token=" + encodeURIComponent(riToken));
+  if (r.body && r.body.image) $("#riImg").src = r.body.image;
+}
+$("#riInstall").addEventListener("click", async () => {
+  if (!loggedIn) return;
+  const r = await jpost("/admin/remote-import/install", {});
+  if (r.status !== 200) { toast((r.body && r.body.detail) || "安装启动失败", true); return; }
+  toast("开始安装组件（Chromium + Xvfb），装好自动刷新");
+  loadRemote();
+});
+$("#riUninstall").addEventListener("click", async () => {
+  if (!loggedIn) return;
+  if (!confirm("卸载经本页装过的组件（只卸来源账上的包，装前已有的不动）？")) return;
+  const r = await jpost("/admin/remote-import/uninstall", {});
+  if (r.status !== 200) { toast((r.body && r.body.detail) || "卸载启动失败", true); return; }
+  toast("开始卸载，完成后自动刷新");
+  loadRemote();
+});
+$("#riStart").addEventListener("click", async () => {
+  if (!loggedIn) return;
+  const r = await jpost("/admin/remote-import/start", {});
+  if (r.status !== 200 || !r.body) { toast((r.body && r.body.detail) || "启动失败", true); return; }
+  riToken = r.body.token; riRunId = r.body.run_id;
+  $("#riPhases").style.display = "flex";
+  $("#riFrame").style.display = "block";
+  $("#riKeys").style.display = "flex";
+  $("#riState").textContent = "";
+  riSetPhase("launching");
+  clearInterval(riFrameTimer); clearInterval(riStatTimer);
+  riFrameTimer = setInterval(riPollFrame, 1500);
+  riStatTimer = setInterval(riPollStatus, 3000);
+  setTimeout(riPollFrame, 800);
+});
+$("#riImg").addEventListener("click", async e => {
+  if (!riToken) return;
+  const img = e.target, rect = img.getBoundingClientRect();
+  const x = Math.round((e.clientX - rect.left) * (img.naturalWidth / rect.width));
+  const y = Math.round((e.clientY - rect.top) * (img.naturalHeight / rect.height));
+  await jpost("/admin/remote-import/input", { token: riToken, kind: "mouse", event: "click", x: x, y: y });
+  setTimeout(riPollFrame, 350);
+});
+$("#riType").addEventListener("click", async () => {
+  if (!riToken) return;
+  const t = $("#riText").value;
+  if (t) { await jpost("/admin/remote-import/input", { token: riToken, kind: "text", text: t }); $("#riText").value = ""; setTimeout(riPollFrame, 350); }
+});
+$$("#riKeys [data-key]").forEach(b => b.addEventListener("click", async () => {
+  if (!riToken) return;
+  await jpost("/admin/remote-import/input", { token: riToken, kind: "key", key: b.dataset.key });
+  setTimeout(riPollFrame, 350);
+}));
+$("#riCancel").addEventListener("click", async () => {
+  if (!riToken) return;
+  await jpost("/admin/remote-import/cancel", { token: riToken });
+  toast("正在结束本轮…");
+});
+
+/* ---------- 执行账 ---------- */
+const KIND_CN = { chat: "对话", image: "图片", video: "视频", audio: "音频", reset: "重置", approval: "审批", awaiting: "等待答复", fs_sweep: "文件空间收割", window_slot: "窗口等位", window_reap: "窗空闲回收", capability: "能力标记" };
+// 错误分类中文标签（0.2.18）：机器 code 不动（category/subtype 原值
+// 仍在账里），人面一律中文；awaiting_input 按子型分「选项提问/等批准」
+const CAT_CN = { model_refusal: "模型拒绝", account_unavailable: "账号不可用", auth_expired: "登录失效", queue_full: "队列已满", timeout: "超时", upstream_error: "上游错误", invalid_request: "请求无效", not_found: "不存在", send_unconfirmed: "发送未确认", awaiting_input: "等待答复" };
+function catLabel(x){
+  if (!x.category) return "";
+  if (x.category === "awaiting_input") return x.subtype === "approval" ? "等待答复·等批准" : "等待答复·选项提问";
+  if (x.category === "queue_full" && x.subtype === "media_queue") return "媒体队列满";
+  if (x.category === "queue_full" && x.subtype === "window_cap") return "叠窗已满";
+  return CAT_CN[x.category] || x.category;
+}
+async function loadExec(){
+  const r = await api("/admin/executions?limit=20");
+  const list = (r.body && r.body.executions) || [];
+  $("#execEmpty").style.display = list.length ? "none" : "block";
+  $("#execBody").innerHTML = list.map(x =>
+    "<tr>" +
+    '<td class="mono">' + fmtClock(x.ts) + "</td>" +
+    "<td>" + esc(KIND_CN[x.kind] || x.kind || "") + "</td>" +
+    '<td class="mono">' + esc(x.account_id || "") + "</td>" +
+    "<td>" + (x.ok ? '<span class="badge ok">成功</span>' : '<span class="badge bad">失败</span>') + (x.category ? ' <span class="badge warn">' + esc(catLabel(x)) + "</span>" : "") + "</td>" +
+    '<td><span class="errsum" title="' + esc(x.error || "") + '">' + esc(x.error || "—") + "</span>" + (x.file_missing ? ' <span class="badge bad">文件未回</span>' : "") + "</td>" +
+    "</tr>"
+  ).join("");
+}
+$("#execRefresh").addEventListener("click", loadExec);
+$("#execClear").addEventListener("click", async () => {
+  if (!loggedIn) return;
+  if (!confirm("确定清空全部执行账？")) return;
+  const r = await jpost("/admin/executions/clear", {});
+  if (r.status === 200) { toast("已清空 " + ((r.body && r.body.cleared) || 0) + " 条"); loadExec(); }
+  else toast((r.body && r.body.detail) || "清空失败", true);
+});
+
+/* ---------- 媒体库 ---------- */
+const KIND_LABEL = { image: "图片", video: "视频", audio: "音频", doc: "文档", subtitle: "字幕", other: "其他" };
+function mediaKind(m){
+  const k = (m && m.kind) || "other";
+  return Object.prototype.hasOwnProperty.call(KIND_LABEL, k) ? k : "other";
+}
+function mediaExt(name){
+  const s = String(name || ""), i = s.lastIndexOf(".");
+  return i >= 0 ? s.slice(i + 1).toUpperCase() : "";
+}
+function mediaPicked(){
+  return $$("#mediaGrid .sel").filter(el => el.checked).map(el => el.dataset.sel);
+}
+function syncMediaSel(){
+  const all = $$("#mediaGrid .sel");
+  const n = mediaPicked().length;
+  $("#mediaSelN").textContent = n;
+  $("#mediaSelAll").textContent = (all.length && n === all.length) ? "取消全选" : "全选";
+}
+async function loadMedia(){
+  const r = await api("/admin/media");
+  const list = (r.body && r.body.media) || [];
+  $("#mediaCount").textContent = list.length + " 个文件";
+  $("#mediaEmpty").style.display = list.length ? "none" : "block";
+  $("#mediaGrid").innerHTML = list.map(m => {
+    const k = mediaKind(m);
+    let thumb;
+    if (k === "video") thumb = '<video src="' + esc(m.url) + '" muted preload="metadata"></video>';
+    else if (k === "image") thumb = '<img loading="lazy" src="' + esc(m.url) + '" alt="">';
+    else if (k === "audio") thumb = '<div class="face"><b>&#9834;</b><span>' + esc(mediaExt(m.name) || "音频") + "</span></div>";
+    else {
+      const e = mediaExt(m.name) || "FILE";
+      thumb = '<div class="face"><b' + (e.length > 3 ? ' class="sm"' : "") + ">" + esc(e) +
+        "</b><span>" + (k === "doc" ? "文档" : k === "subtitle" ? "字幕" : "文件") + "</span></div>";
+    }
+    return '<div class="tile"><span class="kind">' + KIND_LABEL[k] + "</span>" +
+      '<input type="checkbox" class="sel" data-sel="' + esc(m.name) + '" data-w aria-label="勾选">' +
+      '<div class="thumb" data-url="' + esc(m.url) + '" data-kind="' + k + '" data-name="' + esc(m.name) + '">' + thumb + "</div>" +
+      '<div class="meta"><div class="nm" title="' + esc(m.name) + '">' + esc(m.name) + "</div>" +
+      '<div class="sz">' + fmtBytes(m.bytes) + " · " + fmtDayTime(m.mtime) + "</div>" +
+      '<div class="ac">' +
+        '<a class="minibtn" href="' + esc(m.url) + '" download="' + esc(m.name) + '">下载</a>' +
+        '<span class="minibtn dng" data-del="' + esc(m.name) + '">删除</span>' +
+      "</div></div></div>";
+  }).join("");
+  applyLock();
+  syncMediaSel();
+  $$("#mediaGrid [data-del]").forEach(el => el.addEventListener("click", async () => {
+    if (!loggedIn) return;
+    if (!confirm("确定删除这个文件？")) return;
+    const r = await jpost("/admin/media/delete", { name: el.dataset.del });
+    if (r.status === 200) { toast("已删除"); loadMedia(); }
+    else toast((r.body && r.body.detail) || "删除失败", true);
+  }));
+  $$("#mediaGrid .sel").forEach(el => el.addEventListener("change", () => {
+    if (!loggedIn) { el.checked = false; return; }
+    syncMediaSel();
+  }));
+  $$("#mediaGrid .thumb").forEach(el => el.addEventListener("click", () => {
+    openLb(el.dataset.url, el.dataset.kind, el.dataset.name);
+  }));
+}
+$("#mediaRefresh").addEventListener("click", loadMedia);
+$("#mediaSelAll").addEventListener("click", () => {
+  if (!loggedIn) return;
+  const all = $$("#mediaGrid .sel");
+  const target = !(all.length && mediaPicked().length === all.length);
+  all.forEach(el => { el.checked = target; });
+  syncMediaSel();
+});
+$("#mediaDelSel").addEventListener("click", async () => {
+  if (!loggedIn) return;
+  const names = mediaPicked();
+  if (!names.length) { toast("先勾选要删除的文件", true); return; }
+  if (!confirm("确定删除所选 " + names.length + " 个文件？")) return;
+  const r = await jpost("/admin/media/delete-batch", { names });
+  if (r.status === 200 && r.body) {
+    const ok = r.body.deleted || 0, fail = (r.body.total || names.length) - ok;
+    if (ok) toast("已删除 " + ok + " 个" + (fail ? "，失败 " + fail + " 个" : ""));
+    else toast("删除失败", true);
+  } else toast((r.body && r.body.detail) || "删除失败", true);
+  loadMedia();
+});
+
+/* ---------- 媒体放大浮层 ---------- */
+/* md 安全渲染：先全量转义，再做最基本的标题/列表/代码块/引用变换——文件内容永不裸注入 */
+function mdInline(s){
+  return esc(s)
+    .replace(/`([^`]+)`/g, "<code>$1</code>")
+    .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+    .replace(/\[([^\]]+)\]\((https?:[^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+}
+function renderMd(src){
+  const lines = String(src).replace(/\r\n?/g, "\n").split("\n");
+  const out = [];
+  let inCode = false, codeBuf = [], list = null;
+  const closeList = () => { if (list) { out.push(list === "ul" ? "</ul>" : "</ol>"); list = null; } };
+  for (const line of lines) {
+    if (/^\s*```/.test(line)) {
+      if (inCode) { out.push('<pre class="codeblk"><code>' + esc(codeBuf.join("\n")) + "</code></pre>"); codeBuf = []; inCode = false; }
+      else { closeList(); inCode = true; }
+      continue;
+    }
+    if (inCode) { codeBuf.push(line); continue; }
+    const h = line.match(/^(#{1,6})\s+(.*)$/);
+    if (h) { closeList(); out.push("<h" + h[1].length + ">" + mdInline(h[2]) + "</h" + h[1].length + ">"); continue; }
+    if (/^\s*(-{3,}|\*{3,}|_{3,})\s*$/.test(line)) { closeList(); out.push("<hr>"); continue; }
+    const q = line.match(/^>\s?(.*)$/);
+    if (q) { closeList(); out.push("<blockquote>" + mdInline(q[1]) + "</blockquote>"); continue; }
+    const ul = line.match(/^\s*[-*+]\s+(.*)$/);
+    if (ul) { if (list !== "ul") { closeList(); out.push("<ul>"); list = "ul"; } out.push("<li>" + mdInline(ul[1]) + "</li>"); continue; }
+    const ol = line.match(/^\s*\d+[.)]\s+(.*)$/);
+    if (ol) { if (list !== "ol") { closeList(); out.push("<ol>"); list = "ol"; } out.push("<li>" + mdInline(ol[1]) + "</li>"); continue; }
+    if (!line.trim()) { closeList(); continue; }
+    closeList();
+    out.push("<p>" + mdInline(line.trim()) + "</p>");
+  }
+  if (inCode) out.push('<pre class="codeblk"><code>' + esc(codeBuf.join("\n")) + "</code></pre>");
+  closeList();
+  return out.join("\n");
+}
+async function openLb(url, kind, name){
+  const body = $("#lbBody");
+  const isDoc = kind === "doc" || kind === "subtitle";
+  $("#lbCap").textContent = isDoc ? "" : (name || "");
+  if (kind === "video") body.innerHTML = '<video src="' + esc(url) + '" controls autoplay></video>';
+  else if (kind === "audio") body.innerHTML = '<audio src="' + esc(url) + '" controls autoplay></audio>';
+  else if (isDoc) body.innerHTML =
+    '<div class="lbdoc"><div class="docbar"><span class="nm">' + esc(name || "") + "</span>" +
+    '<a class="minibtn" href="' + esc(url) + '" download="' + esc(name || "") + '">下载</a></div>' +
+    '<div class="docbody"><pre>加载中…</pre></div></div>';
+  else if (kind === "other") body.innerHTML =
+    '<div class="lbmsg">该类型暂不支持在线预览<br><a href="' + esc(url) + '" download="' + esc(name || "") + '">下载文件</a></div>';
+  else body.innerHTML = '<img src="' + esc(url) + '" alt="">';
+  const inner = body.querySelector("video, audio, .lbdoc, .lbmsg");
+  if (inner) inner.addEventListener("click", e => e.stopPropagation());
+  $("#lightbox").classList.add("on");
+  if (!isDoc) return;
+  try {
+    const r = await fetch(url);
+    if (!r.ok) throw new Error(String(r.status));
+    const text = await r.text();
+    const db = $("#lbBody .docbody");
+    if (!db) return;
+    const ext = (String(name || "").split(".").pop() || "").toLowerCase();
+    if (ext === "md" || ext === "markdown") db.innerHTML = renderMd(text);
+    else { const p = document.createElement("pre"); p.textContent = text; db.replaceChildren(p); }
+  } catch(e) {
+    const db = $("#lbBody .docbody");
+    if (db) db.innerHTML = "<pre>读取失败，请用下载查看。</pre>";
+  }
+}
+function closeLb(){
+  if (!$("#lightbox").classList.contains("on")) return;
+  $("#lightbox").classList.remove("on");
+  $$("#lbBody video, #lbBody audio").forEach(v => { v.pause(); v.removeAttribute("src"); v.load(); });
+  $("#lbBody").innerHTML = "";
+}
+$("#lightbox").addEventListener("click", closeLb);
+document.addEventListener("keydown", e => { if (e.key === "Escape") closeLb(); });
+
+/* ---------- 设置 ---------- */
+let winLimit = 1, winCap = 6, winIdle = 30, resOn = false;
+$("#winMinus").addEventListener("click", () => { if (loggedIn && winLimit > 1) { winLimit--; $("#winVal").textContent = winLimit; } });
+$("#winPlus").addEventListener("click", () => { if (loggedIn && winLimit < 64) { winLimit++; $("#winVal").textContent = winLimit; } });
+$("#winCapMinus").addEventListener("click", () => { if (loggedIn && winCap > 1) { winCap--; $("#winCapVal").textContent = winCap; } });
+$("#winCapPlus").addEventListener("click", () => { if (loggedIn && winCap < 64) { winCap++; $("#winCapVal").textContent = winCap; } });
+$("#winIdleMinus").addEventListener("click", () => { if (loggedIn && winIdle > 1) { winIdle--; $("#winIdleVal").textContent = winIdle; } });
+$("#winIdlePlus").addEventListener("click", () => { if (loggedIn && winIdle < 1440) { winIdle++; $("#winIdleVal").textContent = winIdle; } });
+$("#resSwitch").addEventListener("click", () => { if (!loggedIn) return; resOn = !resOn; $("#resSwitch").classList.toggle("on", resOn); });
+$("#allocSel").addEventListener("change", () => { $("#allocAccRow").style.display = $("#allocSel").value === "single" ? "flex" : "none"; });
+async function loadCfg(){
+  const wl = await api("/admin/window-limit");
+  if (wl.body) { winLimit = wl.body.limit || 1; $("#winVal").textContent = winLimit; }
+  const wc = await api("/admin/account-window-cap");
+  if (wc.body) {
+    winCap = wc.body.cap || 6; $("#winCapVal").textContent = winCap;
+    const parts = [];
+    const counts = wc.body.counts || {}, waiting = wc.body.waiting || {};
+    const ids = Array.from(new Set([].concat(Object.keys(counts), Object.keys(waiting)))).sort();
+    ids.forEach(id => parts.push(id.slice(0, 6) + "… 在跑 " + (counts[id] || 0) + " · 等 " + (waiting[id] || 0)));
+    $("#winLive").textContent = parts.length ? parts.join("；") : "无在跑会话";
+  }
+  const wi = await api("/admin/window-idle-timeout");
+  if (wi.body) { winIdle = wi.body.timeout_min || 30; $("#winIdleVal").textContent = winIdle; }
+  const rs = await api("/admin/residency");
+  if (rs.body) { resOn = !!rs.body.enabled; $("#resSwitch").classList.toggle("on", resOn); }
+  const al = await api("/admin/alloc");
+  if (al.body) {
+    $("#allocSel").value = al.body.mode || "pool";
+    $("#allocAcc").value = al.body.account || "";
+    $("#allocAccRow").style.display = (al.body.mode === "single") ? "flex" : "none";
+  }
+}
+$("#cfgSave").addEventListener("click", async () => {
+  if (!loggedIn) return;
+  const r1 = await jpost("/admin/window-limit", { limit: winLimit });
+  if (r1.status !== 200) { toast((r1.body && r1.body.detail) || "窗口上限保存失败", true); return; }
+  const r1b = await jpost("/admin/account-window-cap", { cap: winCap });
+  if (r1b.status !== 200) { toast((r1b.body && r1b.body.detail) || "单号叠窗上限保存失败", true); return; }
+  const r1c = await jpost("/admin/window-idle-timeout", { timeout_min: winIdle });
+  if (r1c.status !== 200) { toast((r1c.body && r1c.body.detail) || "窗空闲关闭保存失败", true); return; }
+  const r2 = await jpost("/admin/residency", { enabled: resOn });
+  if (r2.status !== 200) { toast((r2.body && r2.body.detail) || "常驻保存失败", true); return; }
+  const r3 = await jpost("/admin/alloc", { mode: $("#allocSel").value, account: $("#allocAcc").value.trim() });
+  if (r3.status !== 200) { toast((r3.body && r3.body.detail) || "分配模式保存失败", true); return; }
+  toast("设置已保存"); loadStatus();
+});
+
+/* ---------- 启动 ---------- */
+// 直登失败落回时带 login_err 参数：弹提示并清掉地址栏参数（成功时服务端已 302 到干净地址）
+(function(){
+  const p = new URLSearchParams(location.search);
+  const e = p.get("login_err");
+  if (!e) return;
+  history.replaceState(null, "", location.pathname);
+  if (e === "locked") toast("失败次数过多，已锁定，请 10 分钟后再试", true);
+  else toast("直登链接不正确", true);
+})();
+loadSession();
+loadAccounts();
+loadExec();
+loadCfg();
+loadVersion();
+</script>
+</body>
+</html>

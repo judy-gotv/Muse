@@ -1,0 +1,164 @@
+# Author: Passwd Word
+# Mapi Release: 打 v* tag 即构建完整二进制包, 挂到 Releases。
+# 完整二进制 = 单个 mapi 可执行文件 + 安装所需全部文件 (install.sh / uninstall.sh /
+# README.md / deploy/mapi.service / .env.example / LICENSE), 缺一不可;
+# 另附 SHA256SUMS.txt 与 Cargo.lock (供下次 --locked 复现构建)。
+# 规则 (ci_artifact_delivery / ghcr_container_delivery):
+# - 版本必须与 Cargo.toml 一致, 否则失败, 不发错版包。
+# - 二进制 < 1MB 直接失败, 不出空包。
+# - 包内文件逐项核对后才发布 (ls + sha256 校验)。
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "要发布的 tag (如 v0.0.1, 必须已存在)"
+        required: true
+        default: "v0.0.1"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            target: x86_64
+            rust_target: x86_64-unknown-linux-gnu
+          - runner: ubuntu-24.04-arm
+            target: aarch64
+            rust_target: aarch64-unknown-linux-gnu
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - name: Checkout tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref_name }}
+
+      - name: Version check (tag 必须等于 Cargo.toml)
+        run: |
+          set -euo pipefail
+          TAG="${{ github.event.inputs.tag || github.ref_name }}"
+          TAG="${TAG#v}"
+          VER="$(grep '^version' Cargo.toml | head -n 1 | sed 's/.*"\(.*\)".*/\1/')"
+          echo "tag=$TAG Cargo.toml=$VER"
+          [ "$TAG" = "$VER" ] || { echo "版本不一致: tag $TAG 但 Cargo.toml 是 $VER"; exit 1; }
+
+      - name: Install Rust 1.89
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.89
+          targets: ${{ matrix.rust_target }}
+
+      - name: Install build deps
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq pkg-config libssl-dev ca-certificates
+
+      - name: Build release binary
+        run: |
+          set -euo pipefail
+          cargo build --release --target ${{ matrix.rust_target }}
+          BIN="target/${{ matrix.rust_target }}/release/mapi"
+          [ -f "$BIN" ] || { echo "找不到 $BIN"; exit 1; }
+          SIZE="$(stat -c%s "$BIN")"
+          echo "binary: $BIN ($SIZE bytes)"
+          [ "$SIZE" -gt 1000000 ] || { echo "二进制只有 $SIZE 字节, 疑似空包"; exit 1; }
+          # 冒烟: 只跑 --help 级别的启动检查 (无账号也能起, /healthz 必须通)
+          cp "$BIN" /tmp/mapi-smoke
+          chmod +x /tmp/mapi-smoke
+          M2RS_PORT=18699 M2RS_API_KEY=smoke-test-only-key M2RS_DATA_DIR=/tmp/mapi-smoke-data /tmp/mapi-smoke &
+          SMOKE_PID=$!
+          trap 'kill $SMOKE_PID 2>/dev/null || true' EXIT
+          ok=0
+          for i in $(seq 1 30); do
+            if curl -fsS -m 3 http://127.0.0.1:18699/healthz >/dev/null 2>&1; then ok=1; break; fi
+            sleep 2
+          done
+          [ "$ok" -eq 1 ] || { echo "冒烟: 60 秒内 /healthz 未通"; exit 1; }
+          echo "healthz: $(curl -fsS http://127.0.0.1:18699/healthz)"
+          echo "version: $(curl -fsS http://127.0.0.1:18699/admin/update/check)"
+          kill $SMOKE_PID; trap - EXIT
+
+      - name: Package complete binary bundle
+        run: |
+          set -euo pipefail
+          VER="$(grep '^version' Cargo.toml | head -n 1 | sed 's/.*"\(.*\)".*/\1/')"
+          PKG="mapi-${VER}-linux-${{ matrix.target }}"
+          mkdir -p "dist/$PKG"
+          cp "target/${{ matrix.rust_target }}/release/mapi" "dist/$PKG/mapi"
+          cp install.sh uninstall.sh README.md .env.example LICENSE "dist/$PKG/"
+          mkdir -p "dist/$PKG/deploy"
+          cp deploy/mapi.service "dist/$PKG/deploy/"
+          chmod +x "dist/$PKG/mapi" "dist/$PKG/install.sh" "dist/$PKG/uninstall.sh"
+          # 逐项核对: 包里必须有这 8 项, 缺一项就失败
+          for f in mapi install.sh uninstall.sh README.md .env.example LICENSE deploy/mapi.service; do
+            [ -e "dist/$PKG/$f" ] || { echo "包里缺 $f"; exit 1; }
+          done
+          [ -x "dist/$PKG/mapi" ] || { echo "mapi 没有可执行权限"; exit 1; }
+          (cd dist && tar -czf "$PKG.tar.gz" "$PKG")
+          (cd dist && sha256sum "$PKG.tar.gz" > "$PKG.tar.gz.sha256")
+          cp Cargo.lock "dist/Cargo.lock"
+          ls -lR dist
+
+      - name: Upload bundle artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mapi-linux-${{ matrix.target }}
+          path: |
+            dist/*.tar.gz
+            dist/*.sha256
+            dist/Cargo.lock
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download bundles
+        uses: actions/download-artifact@v4
+        with:
+          path: bundles
+          merge-multiple: true
+
+      - name: Verify checksums
+        run: |
+          set -euo pipefail
+          ls -l bundles/
+          for f in bundles/*.tar.gz; do
+            (cd bundles && sha256sum -c "$(basename "$f").sha256")
+          done
+          echo "checksums OK"
+
+      - name: Publish Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.tag || github.ref_name }}
+          name: Mapi ${{ github.event.inputs.tag || github.ref_name }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          files: |
+            bundles/*.tar.gz
+            bundles/*.sha256
+            bundles/Cargo.lock
+          body: |
+            Mapi 完整二进制包 (Linux x86_64 + aarch64)。
+
+            每个 `.tar.gz` 里都含完整可运行的一套, 缺一不可:
+            - `mapi` 可执行文件 (Rust 构建, 控制台与 /v1 接口已内嵌)
+            - `install.sh` / `uninstall.sh` (VPS 一键安装/卸载)
+            - `README.md` (用法说明)
+            - `deploy/mapi.service` (systemd 单元)
+            - `.env.example` / `LICENSE`
+
+            校验: `sha256sum -c <包名>.tar.gz.sha256`
+
+            Docker 镜像见 GHCR: `ghcr.io/judy-gotv/muse:latest`

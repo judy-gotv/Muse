@@ -1,0 +1,40 @@
+services:
+  mapi:
+    # 二选一: 用预构建镜像 (推荐, 推到 GHCR 后) 或本地构建.
+    # 预构建镜像:
+    image: ghcr.io/judy-gotv/muse:latest
+    # 本地构建 (构建上下文就是本仓库根目录):
+    # build:
+    #   context: ..
+    #   dockerfile: docker/Dockerfile
+    container_name: mapi
+    restart: always
+    ports:
+      - "18611:18611"
+    environment:
+      # 管理密钥: 从 .env 读, 留空则 entrypoint 自动生成并打印到日志一次.
+      # 已核实 (remote_import.rs 直读): M2RS_DATA_DIR / M2RS_FULL_BROWSER_BIN / M2RS_XVFB_BIN
+      - M2RS_DATA_DIR=/app/data
+      - M2RS_FULL_BROWSER_BIN=/usr/bin/chromium
+      - M2RS_XVFB_BIN=/usr/bin/Xvfb
+      # 已确认 (src/config.rs): M2RS_PORT / M2RS_API_KEY 为主, 其余为兼容导出
+      - M2RS_PORT=18611
+      - M2RS_HOST=0.0.0.0
+      - M2RS_API_KEY=${M2RS_API_KEY:-}
+      - MAPI_PORT=18611
+      - MAPI_KEY=${M2RS_API_KEY:-}
+      - PORT=18611
+    volumes:
+      # 持久化: 账号池、remote_import.json、component_ledger.json、临时 profile 全在这里
+      - mapi-data:/app/data
+    # Chromium 多标签页 + Xvfb 画面需要足够的共享内存, 否则渲染崩溃
+    shm_size: "2gb"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:18611/healthz"]
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
+
+volumes:
+  mapi-data:

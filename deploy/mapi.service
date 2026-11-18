@@ -1,0 +1,19 @@
+[Unit]
+Description=Mapi - Muse account pool bridge (Rust)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=mapi
+Group=mapi
+WorkingDirectory=/opt/mapi
+EnvironmentFile=/opt/mapi/.env
+ExecStart=/opt/mapi/mapi
+Restart=always
+RestartSec=3
+NoNewPrivileges=true
+LimitNOFILE=65535
+
+[Install]
+WantedBy=multi-user.target
