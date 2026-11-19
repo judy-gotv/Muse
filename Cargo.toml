@@ -1,16 +1,16 @@
 # Author: Passwd Word
-# Mapi — Muse (muse.ai) 逆向封装为 OpenAI 兼容接口 (Rust 重写版)
+# Muse-Api — Muse (muse.ai) 逆向封装为 OpenAI 兼容接口 (Rust 重写版)
 # 1:1 目标: 演示站 Mapi 0.2.29 (端口 18611)。功能规约见 Python 原版 muse2api
 # (judy-gotv/muse_api, v1.6.11) 与演示站控制台; 远程导入模块见 src/remote_import.rs。
 [package]
 name = "muse2api-rs"
-version = "0.0.1"
+version = "0.0.2"
 edition = "2021"
-description = "Mapi: Muse (muse.ai) reverse-proxied as an OpenAI-compatible API"
+description = "Muse-Api: Muse (muse.ai) reverse-proxied as an OpenAI-compatible API"
 license = "MIT"
 
 [[bin]]
-name = "mapi"
+name = "muse-api"
 path = "src/main.rs"
 
 [lib]

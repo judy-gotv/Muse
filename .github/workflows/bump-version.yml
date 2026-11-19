@@ -1,0 +1,67 @@
+# Author: Passwd Word
+# 自动递增版本号: 每次 push 到 main, 若当前 Cargo.toml 版本已有 tag,
+# 则 patch +1、打 tag、发 Release、重建镜像; 若版本尚无 tag, 只打 tag + 发版, 不再递增。
+# 终止性: 本工作流用 GITHUB_TOKEN 推送, GitHub 不会因此再触发工作流, 不会死循环。
+# 注意: 发版与镜像构建用 gh workflow run 显式触发 (GITHUB_TOKEN 的 push/tag 不触发工作流)。
+name: bump-version
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: version-bump
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Bump, tag and dispatch
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          git config user.name "Passwd Word"
+          git config user.email "passwd@example.com"
+          VER="$(grep '^version' Cargo.toml | head -n 1 | sed 's/.*"\(.*\)".*/\1/')"
+          echo "current version: $VER"
+          BUMPED=0
+          if git ls-remote --tags origin "refs/tags/v$VER" | grep -q .; then
+            echo "tag v$VER 已存在, 递增 patch"
+            NEW="$(echo "$VER" | awk -F. '{OFS="."; $NF+=1; print}')"
+            echo "new version: $NEW"
+            python3 - "$VER" "$NEW" <<'PYEOF'
+          import sys
+          old, new = sys.argv[1], sys.argv[2]
+          for path in ["Cargo.toml", "README.md", "install.sh", "src/admin.html", ".github/workflows/release.yml"]:
+              s = open(path).read()
+              n = s.count(old)
+              print(f"{path}: {old} -> {new}: {n}")
+              assert n >= 1, path
+              open(path, "w").write(s.replace(old, new))
+          PYEOF
+            git add -A
+            git commit -m "chore(release): $NEW"
+            git push origin main
+            VER="$NEW"
+            BUMPED=1
+          else
+            echo "tag v$VER 不存在, 不递增"
+          fi
+          git tag "v$VER"
+          git push origin "v$VER"
+          echo "tag v$VER 已推"
+          gh workflow run release.yml --ref main -f tag="v$VER"
+          if [ "$BUMPED" -eq 1 ]; then
+            gh workflow run docker.yml --ref main
+          fi

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Author: Passwd Word
-# Mapi VPS 一键安装脚本 (Debian 12 / Ubuntu 22.04 / 24.04, x86_64 / arm64)
+# Muse-Api VPS 一键安装脚本 (Debian 12 / Ubuntu 22.04 / 24.04, x86_64 / arm64)
 #
 # 演示站实测基准 (2026-11-17):
 #   Mapi 0.2.29, 端口 18611, /healthz 返回 {"status":"ok"}
@@ -9,20 +9,20 @@
 #   Xvfb env: M2RS_XVFB_BIN (以上三项见 remote_import.rs, 其余 env 名见 README 待确认表)
 #
 # 用法 (root, 默认直接从本仓库拉源码构建):
-#   curl -fsSL https://raw.githubusercontent.com/judy-gotv/Muse/main/install.sh -o /tmp/mapi-install.sh
-#   bash /tmp/mapi-install.sh
-#   bash /tmp/mapi-install.sh --ref v0.0.1 --port 18611
+#   curl -fsSL https://raw.githubusercontent.com/judy-gotv/Muse/main/install.sh -o /tmp/muse-api-install.sh
+#   bash /tmp/muse-api-install.sh
+#   bash /tmp/muse-api-install.sh --ref v0.0.2 --port 18611
 #   # 或用 Release 二进制包 (免编译, 包里含完整二进制 + install.sh + 说明):
-#   bash install.sh --source https://github.com/judy-gotv/Muse/releases/download/v0.0.1/mapi-linux-x86_64.tar.gz
-#   bash install.sh --source /root/mapi-0.0.1-src.tar.gz
+#   bash install.sh --source https://github.com/judy-gotv/Muse/releases/download/v0.0.2/muse-api-0.0.2-linux-x86_64.tar.gz
+#   bash install.sh --source /root/muse-api-0.0.2-src.tar.gz
 #
 # 选项:
 #   --source URL|PATH   源码/二进制来源, 默认 https://github.com/judy-gotv/Muse.git. 也可以用环境变量 MAPI_SOURCE
-#   --ref REF           git 分支/tag/commit, 默认 main (打 tag 发版时用 v0.0.1 这类)
+#   --ref REF           git 分支/tag/commit, 默认 main (打 tag 发版时用 v0.0.2 这类)
 #   --port PORT          默认 18611 (与 Python 版 muse2api 的 18610 错开)
 #   --key KEY            管理密钥, 不给则自动生成 64 位 hex 并只在装完打印一次
-#   --install-dir DIR    默认 /opt/mapi
-#   --data-dir DIR       默认 /opt/mapi/data
+#   --install-dir DIR    默认 /opt/muse-api
+#   --data-dir DIR       默认 /opt/muse-api/data
 #   --no-remote-import   不装 chromium + xvfb (远程导入不可用, 其余功能正常)
 #   --no-firewall        不尝试放行端口
 #   --skip-build         源码已编好? 仅当 --source 是 Release 二进制包时有效, 跳过 cargo 构建
@@ -34,8 +34,8 @@ PORT="${MAPI_PORT:-18611}"
 KEY="${MAPI_KEY:-}"
 SOURCE="${MAPI_SOURCE:-https://github.com/judy-gotv/Muse.git}"
 REF="${MAPI_REF:-main}"
-INSTALL_DIR="${MAPI_INSTALL_DIR:-/opt/mapi}"
-DATA_DIR="${MAPI_DATA_DIR:-/opt/mapi/data}"
+INSTALL_DIR="${MAPI_INSTALL_DIR:-/opt/muse-api}"
+DATA_DIR="${MAPI_DATA_DIR:-/opt/muse-api/data}"
 WITH_REMOTE_IMPORT=1
 OPEN_FIREWALL=1
 SKIP_BUILD=0
@@ -80,7 +80,7 @@ fi
 
 # ---- 取源码 / 二进制 ----
 SRC_DIR="$INSTALL_DIR/src"
-BIN_PATH="$INSTALL_DIR/mapi"
+BIN_PATH="$INSTALL_DIR/muse-api"
 mkdir -p "$INSTALL_DIR" "$DATA_DIR" "$SRC_DIR"
 IS_BINARY=0
 case "$SOURCE" in
@@ -101,8 +101,8 @@ case "$SOURCE" in
     if [ -f "$SOURCE" ]; then cp "$SOURCE" "$TMPDL/pkg.tar.gz"; else
       echo "==> 下载: $SOURCE"; curl -fsSL "$SOURCE" -o "$TMPDL/pkg.tar.gz"
     fi
-    # 二进制包: 解开后根目录/一级子目录里有可执行文件 mapi (或 muse2api-rs)
-    if tar -tzf "$TMPDL/pkg.tar.gz" | grep -Eq '(^|/)(mapi|muse2api-rs|muse2api_rs)$'; then
+    # 二进制包: 解开后根目录/一级子目录里有可执行文件 muse-api (或 muse2api-rs)
+    if tar -tzf "$TMPDL/pkg.tar.gz" | grep -Eq '(^|/)(muse-api|muse-api|muse2api-rs|muse2api_rs)$'; then
       echo "==> 识别为 Release 二进制包"
       rm -rf "$SRC_DIR"; mkdir -p "$SRC_DIR"
       tar -xzf "$TMPDL/pkg.tar.gz" -C "$SRC_DIR"
@@ -119,8 +119,8 @@ esac
 
 # ---- 构建或取二进制 ----
 if [ "$IS_BINARY" -eq 1 ]; then
-  FOUND="$(find "$SRC_DIR" -maxdepth 2 -type f \( -name mapi -o -name 'muse2api-rs' -o -name 'muse2api_rs' \) | head -n 1)"
-  [ -n "$FOUND" ] || { echo "二进制包里找不到 mapi 可执行文件"; exit 1; }
+  FOUND="$(find "$SRC_DIR" -maxdepth 2 -type f \( -name muse-api -o -name muse-api -o -name 'muse2api-rs' -o -name 'muse2api_rs' \) | head -n 1)"
+  [ -n "$FOUND" ] || { echo "二进制包里找不到 muse-api 可执行文件"; exit 1; }
   cp "$FOUND" "$BIN_PATH"; chmod +x "$BIN_PATH"
 else
   [ -f "$SRC_DIR/Cargo.toml" ] || { echo "源码里没有 Cargo.toml, --source 给错了? ($SRC_DIR)"; exit 1; }
@@ -138,18 +138,18 @@ else
     echo "注意: 源码无 Cargo.lock, 不带 --locked 构建 (依赖版本可能漂移)"
     (cd "$SRC_DIR" && cargo build --release)
   fi
-  FOUND="$(find "$SRC_DIR/target/release" -maxdepth 1 -type f \( -name mapi -o -name 'muse2api-rs' -o -name 'muse2api_rs' \) | head -n 1)"
-  [ -n "$FOUND" ] || { echo "构建完成但 target/release 里找不到 mapi 二进制, 请核对 Cargo.toml 的 [[bin]] 名"; exit 1; }
+  FOUND="$(find "$SRC_DIR/target/release" -maxdepth 1 -type f \( -name muse-api -o -name muse-api -o -name 'muse2api-rs' -o -name 'muse2api_rs' \) | head -n 1)"
+  [ -n "$FOUND" ] || { echo "构建完成但 target/release 里找不到 muse-api 二进制, 请核对 Cargo.toml 的 [[bin]] 名"; exit 1; }
   # 防空包: 二进制小于 1MB 基本是编错了, 直接失败不装
   SIZE="$(stat -c%s "$FOUND")"
   [ "$SIZE" -gt 1000000 ] || { echo "构建出的二进制只有 $SIZE 字节, 疑似空包, 拒绝安装"; exit 1; }
   cp "$FOUND" "$BIN_PATH"; chmod +x "$BIN_PATH"
-  ln -sf "$BIN_PATH" /usr/local/bin/mapi
+  ln -sf "$BIN_PATH" /usr/local/bin/muse-api
   echo "==> 二进制: $FOUND ($SIZE 字节) -> $BIN_PATH"
 fi
 
 # ---- 运行用户与配置 ----
-if ! id mapi >/dev/null 2>&1; then useradd -r -s /usr/sbin/nologin -d "$INSTALL_DIR" mapi; fi
+if ! id muse-api >/dev/null 2>&1; then useradd -r -s /usr/sbin/nologin -d "$INSTALL_DIR" muse-api; fi
 if [ -z "$KEY" ]; then
   if [ -f "$INSTALL_DIR/.env" ] && grep -q '^M2RS_API_KEY=..*' "$INSTALL_DIR/.env"; then
     KEY="$(grep '^M2RS_API_KEY=' "$INSTALL_DIR/.env" | cut -d= -f2-)"
@@ -162,7 +162,7 @@ fi
 CHROME_BIN="$(command -v chromium || command -v chromium-browser || command -v google-chrome || true)"
 XVFB_BIN="$(command -v Xvfb || true)"
 cat > "$INSTALL_DIR/.env" <<EOF
-# Mapi 运行配置 (由 install.sh 生成, 手改后 systemctl restart mapi)
+# Muse-Api 运行配置 (由 install.sh 生成, 手改后 systemctl restart muse-api)
 # 已核实 (remote_import.rs 直读): M2RS_DATA_DIR / M2RS_FULL_BROWSER_BIN / M2RS_XVFB_BIN
 M2RS_DATA_DIR=$DATA_DIR
 M2RS_FULL_BROWSER_BIN=${CHROME_BIN:-/usr/bin/chromium}
@@ -176,20 +176,20 @@ MAPI_KEY=$KEY
 PORT=$PORT
 EOF
 chmod 600 "$INSTALL_DIR/.env"
-chown -R mapi:mapi "$INSTALL_DIR" "$DATA_DIR"
+chown -R muse-api:muse-api "$INSTALL_DIR" "$DATA_DIR"
 chmod 755 "$INSTALL_DIR"
 
 # ---- systemd ----
-cat > /etc/systemd/system/mapi.service <<EOF
+cat > /etc/systemd/system/muse-api.service <<EOF
 [Unit]
-Description=Mapi - Muse account pool bridge (Rust)
+Description=Muse-Api - Muse account pool bridge (Rust)
 After=network-online.target
 Wants=network-online.target
 
 [Service]
 Type=simple
-User=mapi
-Group=mapi
+User=muse-api
+Group=muse-api
 WorkingDirectory=$INSTALL_DIR
 EnvironmentFile=$INSTALL_DIR/.env
 ExecStart=$BIN_PATH
@@ -202,8 +202,8 @@ LimitNOFILE=65535
 WantedBy=multi-user.target
 EOF
 systemctl daemon-reload
-systemctl enable -q mapi
-systemctl restart mapi
+systemctl enable -q muse-api
+systemctl restart muse-api
 
 # ---- 防火墙 ----
 if [ "$OPEN_FIREWALL" -eq 1 ]; then
@@ -218,18 +218,18 @@ fi
 echo "==> 等待服务起来 (最多 60 秒)"
 OK=0
 for _ in $(seq 1 60); do
-  if curl -fsS -m 3 "http://127.0.0.1:$PORT/healthz" >/dev/null 2>&1; then OK=1; break; fi
+  if curl -fsS -m 3 "http://127.0.0.2:$PORT/healthz" >/dev/null 2>&1; then OK=1; break; fi
   sleep 1
 done
-[ "$OK" -eq 1 ] || { echo "服务 60 秒内没起来, 看日志: journalctl -u mapi -n 100 --no-pager"; systemctl status mapi --no-pager | head -n 30; exit 1; }
-echo "==> /healthz: $(curl -fsS -m 5 "http://127.0.0.1:$PORT/healthz")"
-echo "==> /admin/update/check: $(curl -fsS -m 5 "http://127.0.0.1:$PORT/admin/update/check")"
+[ "$OK" -eq 1 ] || { echo "服务 60 秒内没起来, 看日志: journalctl -u muse-api -n 100 --no-pager"; systemctl status muse-api --no-pager | head -n 30; exit 1; }
+echo "==> /healthz: $(curl -fsS -m 5 "http://127.0.0.2:$PORT/healthz")"
+echo "==> /admin/update/check: $(curl -fsS -m 5 "http://127.0.0.2:$PORT/admin/update/check")"
 if [ "$WITH_REMOTE_IMPORT" -eq 1 ]; then
-  echo "==> /admin/remote-import: $(curl -fsS -m 5 "http://127.0.0.1:$PORT/admin/remote-import" | head -c 400)"
+  echo "==> /admin/remote-import: $(curl -fsS -m 5 "http://127.0.0.2:$PORT/admin/remote-import" | head -c 400)"
 fi
 IP="$(curl -fsS -m 5 https://api.ipify.org 2>/dev/null || hostname -I | awk '{print $1}')"
 echo
 echo "安装完成."
 echo "控制台: http://$IP:$PORT/?key=$KEY"
 echo "请立即保存上面这行 key, 它只在这里出现一次 (.env 里是 600 权限, 可再查)."
-echo "日志: journalctl -u mapi -f | 重启: systemctl restart mapi | 卸载: bash $INSTALL_DIR/uninstall.sh"
+echo "日志: journalctl -u muse-api -f | 重启: systemctl restart muse-api | 卸载: bash $INSTALL_DIR/uninstall.sh"

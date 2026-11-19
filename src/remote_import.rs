@@ -1,4 +1,4 @@
-//! Mapi 服务器版远程导入 muse 账号（移植壹面板 remote_import.rs 的
+//! Muse-Api 服务器版远程导入 muse 账号（移植壹面板 remote_import.rs 的
 //! 定版形态，danl 2026-11-12 令随管理页批次落码）。
 //!
 //! 形态与面板同源：Xvfb 虚拟屏里拉起临时 profile 的全量 Chromium，

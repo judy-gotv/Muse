@@ -1,10 +1,10 @@
 # Author: Passwd Word
-# Mapi Docker 镜像 (多阶段构建)
+# Muse-Api Docker 镜像 (多阶段构建)
 # 演示站基准: Mapi 0.2.29, 端口 18611, 远程导入需全量 Chromium + Xvfb.
-# 构建上下文必须是 Mapi 源码根目录 (含 Cargo.toml / Cargo.lock / src/).
+# 构建上下文必须是 Muse-Api 源码根目录 (含 Cargo.toml / Cargo.lock / src/).
 # 本 Dockerfile 放在部署包的 docker/ 子目录时, 构建命令见 README:
-#   docker build -f docker/Dockerfile -t mapi:0.2.29 <Mapi源码根目录>
-# 若把本文件拷进 Mapi 源码根目录, 则: docker build -t mapi:0.2.29 .
+#   docker build -f docker/Dockerfile -t muse-api:0.0.2 <Muse-Api源码根目录>
+# 若把本文件拷进 Muse-Api 源码根目录, 则: docker build -t muse-api:0.0.2 .
 #
 # 注意 (按 ghcr_container_delivery 经验):
 # - COPY 用整树, 不写逐文件清单, 避免上游加文件后清单过期导致构建红.
@@ -21,11 +21,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY . .
 RUN if [ ! -f Cargo.lock ]; then echo "WARNING: 源码无 Cargo.lock, 依赖版本可能漂移"; fi \
     && if [ -f Cargo.lock ]; then cargo build --release --locked; else cargo build --release; fi \
-    && BIN="$(ls target/release/mapi target/release/muse2api-rs target/release/muse2api_rs 2>/dev/null | head -n 1)" \
-    && [ -n "$BIN" ] || { echo "target/release 里找不到 mapi 二进制, 核对 Cargo.toml 的 [[bin]] 名"; exit 1; } \
+    && BIN="$(ls target/release/muse-api target/release/muse2api-rs target/release/muse2api_rs 2>/dev/null | head -n 1)" \
+    && [ -n "$BIN" ] || { echo "target/release 里找不到 muse-api 二进制, 核对 Cargo.toml 的 [[bin]] 名"; exit 1; } \
     && SIZE="$(stat -c%s "$BIN")" && echo "binary: $BIN ($SIZE bytes)" \
     && [ "$SIZE" -gt 1000000 ] || { echo "二进制只有 $SIZE 字节, 疑似空包, 拒绝出镜像"; exit 1; } \
-    && cp "$BIN" /build/mapi
+    && cp "$BIN" /build/muse-api
 
 # ---- 运行阶段 ----
 FROM debian:bookworm-slim
@@ -46,11 +46,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       ca-certificates curl procps openssl \
     && rm -rf /var/lib/apt/lists/* \
     && mkdir -p /app/data /app/data/media /root/muse-profiles \
-    && useradd -r -s /usr/sbin/nologin -d /app mapi \
-    && chown -R mapi:mapi /app
-COPY --from=builder /build/mapi /app/mapi
+    && useradd -r -s /usr/sbin/nologin -d /app muse-api \
+    && chown -R muse-api:muse-api /app
+COPY --from=builder /build/muse-api /app/muse-api
 # 入口脚本直接在镜像里生成, 不依赖构建上下文里有部署包的文件
-# (构建上下文是 Mapi 源码根目录时, 上下文里没有部署包的文件)
+# (构建上下文是 Muse-Api 源码根目录时, 上下文里没有部署包的文件)
 # 不用 heredoc: Dockerfile 里 heredoc 跨行会被当成多条指令, printf 最稳.
 RUN printf '%s\n' \
     '#!/bin/sh' \
@@ -60,12 +60,12 @@ RUN printf '%s\n' \
     'if [ -z "${M2RS_API_KEY:-}" ]; then' \
     '  KEY="$(openssl rand -hex 32)"' \
     '  export M2RS_API_KEY="$KEY" MAPI_KEY="$KEY"' \
-    '  echo "Mapi: 已自动生成管理密钥 (只打印一次, 请保存): $KEY"' \
-    '  echo "Mapi: 控制台地址: http://<你的服务器IP>:18611/?key=$KEY"' \
+    '  echo "Muse-Api: 已自动生成管理密钥 (只打印一次, 请保存): $KEY"' \
+    '  echo "Muse-Api: 控制台地址: http://<你的服务器IP>:18611/?key=$KEY"' \
     'fi' \
-    'exec /app/mapi' > /app/entrypoint.sh \
-  && chmod +x /app/mapi /app/entrypoint.sh
-USER mapi
+    'exec /app/muse-api' > /app/entrypoint.sh \
+  && chmod +x /app/muse-api /app/entrypoint.sh
+USER muse-api
 VOLUME ["/app/data"]
 EXPOSE 18611
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \

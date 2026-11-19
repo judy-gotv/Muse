@@ -1,5 +1,5 @@
 // Author: Passwd Word
-//! Mapi 配置: 环境变量读入。
+//! Muse-Api 配置: 环境变量读入。
 //!
 //! 优先级 (已核实 / 待确认见 README):
 //! - 已核实 (remote_import.rs 直读): `M2RS_DATA_DIR`, `M2RS_FULL_BROWSER_BIN`, `M2RS_XVFB_BIN`
@@ -82,7 +82,7 @@ impl Config {
             .unwrap_or_default();
         let profile_root = env_first(&["M2RS_PROFILE_ROOT", "MUSE2API_PROFILE_ROOT"])
             .map(PathBuf::from)
-            .unwrap_or_else(|| home_dir().join("mapi-profiles"));
+            .unwrap_or_else(|| home_dir().join("muse-api-profiles"));
         Config {
             base_dir,
             data_dir,

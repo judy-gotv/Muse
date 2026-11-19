@@ -1,7 +1,7 @@
 # Author: Passwd Word
-# Mapi -> GHCR (amd64 + arm64), 推 main / 打 tag 时构建. 源码就是本仓库根目录.
+# Muse-Api -> GHCR (amd64 + arm64), 推 main / 打 tag 时构建. 源码就是本仓库根目录.
 # 规则 (ghcr_container_delivery):
-# - 同一 mutable tag 不并行构建: concurrency 串行化, 后到的排队不等价覆盖.
+# - 同一 mutable tag 不并行构建: 新推送取消旧的未完成构建, 只留最新一次 (配合自动递增版本, 旧版本构建直接作废).
 # - 绿≠可用: 构建后按 immutable digest 拉镜像跑起来, /healthz + 远程导入组件双断言.
 # - 二进制 < 1MB 直接失败, 不出空镜像.
 name: docker
@@ -14,14 +14,14 @@ on:
 
 concurrency:
   group: docker-build
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 permissions:
   contents: read
   packages: write
 
 env:
-  IMAGE: ghcr.io/${{ github.repository_owner }}/muse
+  IMAGE: ghcr.io/${{ github.repository_owner }}/muse-api
 
 jobs:
   build:
@@ -72,9 +72,9 @@ jobs:
           DIGEST="${{ steps.build.outputs.digest }}"
           echo "image digest: $DIGEST"
           docker pull "${{ env.IMAGE }}@$DIGEST"
-          docker run -d --name mapi-smoke --shm-size=2g -p 18611:18611 \
+          docker run -d --name muse-api-smoke --shm-size=2g -p 18611:18611 \
             -e M2RS_API_KEY=smoke-test-only-key "${{ env.IMAGE }}@$DIGEST"
-          trap 'docker logs mapi-smoke || true; docker rm -f mapi-smoke >/dev/null 2>&1 || true' EXIT
+          trap 'docker logs muse-api-smoke || true; docker rm -f muse-api-smoke >/dev/null 2>&1 || true' EXIT
           ok=0
           for i in $(seq 1 30); do
             if curl -fsS -m 3 http://127.0.0.1:18611/healthz >/dev/null 2>&1; then ok=1; break; fi

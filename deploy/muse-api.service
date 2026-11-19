@@ -1,15 +1,15 @@
 [Unit]
-Description=Mapi - Muse account pool bridge (Rust)
+Description=Muse-Api - Muse account pool bridge (Rust)
 After=network-online.target
 Wants=network-online.target
 
 [Service]
 Type=simple
-User=mapi
-Group=mapi
-WorkingDirectory=/opt/mapi
-EnvironmentFile=/opt/mapi/.env
-ExecStart=/opt/mapi/mapi
+User=muse-api
+Group=muse-api
+WorkingDirectory=/opt/muse-api
+EnvironmentFile=/opt/muse-api/.env
+ExecStart=/opt/muse-api/muse-api
 Restart=always
 RestartSec=3
 NoNewPrivileges=true

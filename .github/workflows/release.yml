@@ -1,7 +1,7 @@
 # Author: Passwd Word
-# Mapi Release: 打 v* tag 即构建完整二进制包, 挂到 Releases。
-# 完整二进制 = 单个 mapi 可执行文件 + 安装所需全部文件 (install.sh / uninstall.sh /
-# README.md / deploy/mapi.service / .env.example / LICENSE), 缺一不可;
+# Muse-Api Release: 打 v* tag 即构建完整二进制包, 挂到 Releases。
+# 完整二进制 = 单个 muse-api 可执行文件 + 安装所需全部文件 (install.sh / uninstall.sh /
+# README.md / deploy/muse-api.service / .env.example / LICENSE), 缺一不可;
 # 另附 SHA256SUMS.txt 与 Cargo.lock (供下次 --locked 复现构建)。
 # 规则 (ci_artifact_delivery / ghcr_container_delivery):
 # - 版本必须与 Cargo.toml 一致, 否则失败, 不发错版包。
@@ -15,9 +15,9 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "要发布的 tag (如 v0.0.1, 必须已存在)"
+        description: "要发布的 tag (如 v0.0.2, 必须已存在)"
         required: true
-        default: "v0.0.1"
+        default: "v0.0.2"
 
 permissions:
   contents: write
@@ -65,15 +65,15 @@ jobs:
         run: |
           set -euo pipefail
           cargo build --release --target ${{ matrix.rust_target }}
-          BIN="target/${{ matrix.rust_target }}/release/mapi"
+          BIN="target/${{ matrix.rust_target }}/release/muse-api"
           [ -f "$BIN" ] || { echo "找不到 $BIN"; exit 1; }
           SIZE="$(stat -c%s "$BIN")"
           echo "binary: $BIN ($SIZE bytes)"
           [ "$SIZE" -gt 1000000 ] || { echo "二进制只有 $SIZE 字节, 疑似空包"; exit 1; }
           # 冒烟: 只跑 --help 级别的启动检查 (无账号也能起, /healthz 必须通)
-          cp "$BIN" /tmp/mapi-smoke
-          chmod +x /tmp/mapi-smoke
-          M2RS_PORT=18699 M2RS_API_KEY=smoke-test-only-key M2RS_DATA_DIR=/tmp/mapi-smoke-data /tmp/mapi-smoke &
+          cp "$BIN" /tmp/muse-api-smoke
+          chmod +x /tmp/muse-api-smoke
+          M2RS_PORT=18699 M2RS_API_KEY=smoke-test-only-key M2RS_DATA_DIR=/tmp/muse-api-smoke-data /tmp/muse-api-smoke &
           SMOKE_PID=$!
           trap 'kill $SMOKE_PID 2>/dev/null || true' EXIT
           ok=0
@@ -90,18 +90,18 @@ jobs:
         run: |
           set -euo pipefail
           VER="$(grep '^version' Cargo.toml | head -n 1 | sed 's/.*"\(.*\)".*/\1/')"
-          PKG="mapi-${VER}-linux-${{ matrix.target }}"
+          PKG="muse-api-${VER}-linux-${{ matrix.target }}"
           mkdir -p "dist/$PKG"
-          cp "target/${{ matrix.rust_target }}/release/mapi" "dist/$PKG/mapi"
+          cp "target/${{ matrix.rust_target }}/release/muse-api" "dist/$PKG/muse-api"
           cp install.sh uninstall.sh README.md .env.example LICENSE "dist/$PKG/"
           mkdir -p "dist/$PKG/deploy"
-          cp deploy/mapi.service "dist/$PKG/deploy/"
-          chmod +x "dist/$PKG/mapi" "dist/$PKG/install.sh" "dist/$PKG/uninstall.sh"
+          cp deploy/muse-api.service "dist/$PKG/deploy/"
+          chmod +x "dist/$PKG/muse-api" "dist/$PKG/install.sh" "dist/$PKG/uninstall.sh"
           # 逐项核对: 包里必须有这 8 项, 缺一项就失败
-          for f in mapi install.sh uninstall.sh README.md .env.example LICENSE deploy/mapi.service; do
+          for f in muse-api install.sh uninstall.sh README.md .env.example LICENSE deploy/muse-api.service; do
             [ -e "dist/$PKG/$f" ] || { echo "包里缺 $f"; exit 1; }
           done
-          [ -x "dist/$PKG/mapi" ] || { echo "mapi 没有可执行权限"; exit 1; }
+          [ -x "dist/$PKG/muse-api" ] || { echo "muse-api 没有可执行权限"; exit 1; }
           (cd dist && tar -czf "$PKG.tar.gz" "$PKG")
           (cd dist && sha256sum "$PKG.tar.gz" > "$PKG.tar.gz.sha256")
           cp Cargo.lock "dist/Cargo.lock"
@@ -110,7 +110,7 @@ jobs:
       - name: Upload bundle artifact
         uses: actions/upload-artifact@v4
         with:
-          name: mapi-linux-${{ matrix.target }}
+          name: muse-api-linux-${{ matrix.target }}
           path: |
             dist/*.tar.gz
             dist/*.sha256
@@ -141,7 +141,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.event.inputs.tag || github.ref_name }}
-          name: Mapi ${{ github.event.inputs.tag || github.ref_name }}
+          name: Muse-Api ${{ github.event.inputs.tag || github.ref_name }}
           draft: false
           prerelease: false
           generate_release_notes: true
@@ -150,15 +150,15 @@ jobs:
             bundles/*.sha256
             bundles/Cargo.lock
           body: |
-            Mapi 完整二进制包 (Linux x86_64 + aarch64)。
+            Muse-Api 完整二进制包 (Linux x86_64 + aarch64)。
 
             每个 `.tar.gz` 里都含完整可运行的一套, 缺一不可:
-            - `mapi` 可执行文件 (Rust 构建, 控制台与 /v1 接口已内嵌)
+            - `muse-api` 可执行文件 (Rust 构建, 控制台与 /v1 接口已内嵌)
             - `install.sh` / `uninstall.sh` (VPS 一键安装/卸载)
             - `README.md` (用法说明)
-            - `deploy/mapi.service` (systemd 单元)
+            - `deploy/muse-api.service` (systemd 单元)
             - `.env.example` / `LICENSE`
 
             校验: `sha256sum -c <包名>.tar.gz.sha256`
 
-            Docker 镜像见 GHCR: `ghcr.io/judy-gotv/muse:latest`
+            Docker 镜像见 GHCR: `ghcr.io/judy-gotv/muse-api:latest`
