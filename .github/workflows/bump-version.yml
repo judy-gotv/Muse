@@ -16,10 +16,6 @@ concurrency:
 permissions:
   contents: write
   actions: write
-  # 递增会改 .github/workflows/release.yml 里的版本号; 没这一项,
-  # GITHUB_TOKEN (GitHub App) 推 workflow 文件会被远端拒绝
-  # (refusing to allow a GitHub App to create or update workflow ... without `workflows` permission)。
-  workflows: write
 
 jobs:
   bump:
@@ -47,7 +43,10 @@ jobs:
             python3 - "$VER" "$NEW" <<'PYEOF'
           import sys
           old, new = sys.argv[1], sys.argv[2]
-          for path in ["Cargo.toml", "README.md", "install.sh", "src/admin.html", ".github/workflows/release.yml"]:
+          # 注意: GITHUB_TOKEN 推含 workflow 文件改动的提交会被远端拒绝,
+          # 且 permissions 里没有合法的 `workflows` 作用域 (写上会报 Invalid workflow file),
+          # 所以递增不碰 .github/workflows/release.yml; 发版时 tag 由 gh workflow run 显式传。
+          for path in ["Cargo.toml", "README.md", "install.sh", "src/admin.html"]:
               s = open(path).read()
               n = s.count(old)
               print(f"{path}: {old} -> {new}: {n}")
