@@ -1,5 +1,5 @@
 // Author: Passwd Word
-//! Mapi 主程序: 路由接线、鉴权门、控制台与 /v1 OpenAI 兼容接口。
+//! Muse-Api 主程序: 路由接线、鉴权门、控制台与 /v1 OpenAI 兼容接口。
 //! 规约: wiring.md (0.2.28 接线片段) + Python app.py + 演示站控制台 JS。
 //! 鉴权门 (Gate::Read / Write / Token, wiring.md §4):
 //! - Read (GET /admin/* 只读端点): 控制台会话 Cookie, 或?key=, 或 Bearer 均可。
@@ -559,7 +559,7 @@ let app = Router::new()
 
 let addr = format!("{}:{}", cfg.host, cfg.port);
 let listener = tokio::net::TcpListener::bind(&addr).await.expect("绑定端口失败");
-println!("Mapi {} listening on http://{} (key: {})", cfg.version, addr, if api_key.is_empty() { "<未设置>" } else { "<已设置, 见 data/api_key>" });
+println!("Muse-Api {} listening on http://{} (key: {})", cfg.version, addr, if api_key.is_empty() { "<未设置>" } else { "<已设置, 见 data/api_key>" });
 println!("控制台: http://{}:{}/", "127.0.0.1", cfg.port);
 axum::serve(listener, app).await.expect("服务退出");
 }
@@ -593,7 +593,7 @@ Json(json!({ "ok": true, "detail": "服务端收到重置请求, 请重新加载
 }
 
 async fn test_page() -> Response {
-(StatusCode::OK, [(axum::http::header::CONTENT_TYPE, "text/html; charset=utf-8")], "<html><body>Mapi test ok</body></html>").into_response()
+(StatusCode::OK, [(axum::http::header::CONTENT_TYPE, "text/html; charset=utf-8")], "<html><body>Muse-Api test ok</body></html>").into_response()
 }
 
 // ---------------- 控制台鉴权 ----------------
@@ -1133,7 +1133,7 @@ async fn admin_update_check(State(st): S, headers: HeaderMap, Query(q): Query<Ha
         "ok": true,
         "current_version": st.cfg.version,
         "update_available": false,
-        "note": "Mapi: 不执行上游检查",
+        "note": "Muse-Api: 不执行上游检查",
     }))
     .into_response()
 }
@@ -1142,7 +1142,7 @@ async fn admin_update_upgrade(State(st): S, headers: HeaderMap, Query(q): Query<
     if let Err(r) = require_write(&st, &headers, &q).await {
         return r;
     }
-    Json(json!({ "ok": false, "detail": "Mapi 不执行上游检查与自动升级, 请在 Releases 页手动更新" })).into_response()
+    Json(json!({ "ok": false, "detail": "Muse-Api 不执行上游检查与自动升级, 请在 Releases 页手动更新" })).into_response()
 }
 
 async fn admin_repo_status(State(st): S, headers: HeaderMap, Query(q): Query<HashMap<String, String>>) -> Response {
