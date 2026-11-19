@@ -415,6 +415,8 @@ let mut cfg = Config::from_env();
 cfg.ensure_dirs();
 
 // API Key: 环境变量优先; 否则复用 data/api_key, 没有就生成 64 位 hex 写盘 (600)。
+// key_source 只用于启动日志, 让它印 key 的真实来源, 不再无条件写 data/api_key。
+let mut key_source = if cfg.api_key.is_empty() { "data/api_key" } else { "环境变量" };
 if cfg.api_key.is_empty() {
 let key_file = cfg.data_dir.join("api_key");
 if let Ok(k) = std::fs::read_to_string(&key_file) {
@@ -430,6 +432,7 @@ uuid::Uuid::new_v4().simple(),
 uuid::Uuid::new_v4().simple()
 );
 cfg.api_key = k.clone();
+key_source = "data/api_key（新生成）";
 let _ = std::fs::write(&key_file, &k);
 #[cfg(unix)]
 {
@@ -559,7 +562,7 @@ let app = Router::new()
 
 let addr = format!("{}:{}", cfg.host, cfg.port);
 let listener = tokio::net::TcpListener::bind(&addr).await.expect("绑定端口失败");
-println!("Muse-Api {} listening on http://{} (key: {})", cfg.version, addr, if api_key.is_empty() { "<未设置>" } else { "<已设置, 见 data/api_key>" });
+println!("Muse-Api {} listening on http://{} (key: {})", cfg.version, addr, if api_key.is_empty() { "<未设置>".to_string() } else { format!("<已设置, {}>", key_source) });
 println!("控制台: http://{}:{}/", "127.0.0.1", cfg.port);
 axum::serve(listener, app).await.expect("服务退出");
 }
