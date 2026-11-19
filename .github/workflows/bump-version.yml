@@ -20,7 +20,6 @@ permissions:
   # GITHUB_TOKEN (GitHub App) 推 workflow 文件会被远端拒绝
   # (refusing to allow a GitHub App to create or update workflow ... without `workflows` permission)。
   workflows: write
-  workflows: write
 
 jobs:
   bump:
