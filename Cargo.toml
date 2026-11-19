@@ -4,7 +4,7 @@
 # (judy-gotv/muse_api, v1.6.11) 与演示站控制台; 远程导入模块见 src/remote_import.rs。
 [package]
 name = "muse2api-rs"
-version = "0.0.2"
+version = "0.0.3"
 edition = "2021"
 description = "Muse-Api: Muse (muse.ai) reverse-proxied as an OpenAI-compatible API"
 license = "MIT"

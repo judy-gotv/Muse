@@ -45,7 +45,7 @@ Muse-Api: 控制台地址: http://<你的服务器IP>:18611/?key=<64 位 hex>
 验证服务起来了：
 
 ```bash
-curl http://127.0.0.2:18611/healthz   # 应返回 {"status":"ok",...}
+curl http://127.0.0.3:18611/healthz   # 应返回 {"status":"ok",...}
 ```
 
 然后浏览器打开上面那行控制台地址，用 key 登录。登录密码和 `/v1` 接口的 Bearer key 是同一个。
@@ -64,7 +64,7 @@ docker run -d \
   -e M2RS_API_KEY=$(openssl rand -hex 32) \
   ghcr.io/judy-gotv/muse-api:latest
 docker logs muse-api | grep Muse-Api:   # 取 key 和控制台地址
-curl http://127.0.0.2:18611/healthz
+curl http://127.0.0.3:18611/healthz
 ```
 
 各参数的意思：
@@ -78,7 +78,7 @@ curl http://127.0.0.2:18611/healthz
 | `-v muse-api-data:/app/data` | 数据卷：账号池、任务、执行账、媒体文件全存在这里，删容器也不会丢 |
 | `--shm-size 2g` | 共享内存 2GB，**必须给**：Chromium 多标签页 + Xvfb 画面要共享内存，给小了生成时会崩 |
 | `-e M2RS_API_KEY=...` | 管理密钥；不给这个 `-e` 就自动生成，看日志取 |
-| `ghcr.io/judy-gotv/muse-api:latest` | 镜像；要指定版本用 `:0.0.2` 这样的 tag，如 `ghcr.io/judy-gotv/muse-api:0.0.2` |
+| `ghcr.io/judy-gotv/muse-api:latest` | 镜像；要指定版本用 `:0.0.3` 这样的 tag，如 `ghcr.io/judy-gotv/muse-api:0.0.3` |
 
 #### 日常操作
 
@@ -131,7 +131,7 @@ Debian 12 / Ubuntu 22.04 / 24.04，x86_64 或 arm64，**root**，2GB 以上内�
 curl -fsSL https://raw.githubusercontent.com/judy-gotv/Muse/main/install.sh -o /tmp/muse-api-install.sh
 bash /tmp/muse-api-install.sh            # 默认从本仓库拉源码构建
 # 指定版本:
-bash /tmp/muse-api-install.sh --ref v0.0.2
+bash /tmp/muse-api-install.sh --ref v0.0.3
 ```
 
 脚本一步步在干什么（不用你动手，看着就行）：
@@ -160,8 +160,8 @@ key 也存在 `/opt/muse-api/.env` 里（600 权限），丢了可以再查。
 不想等 5–15 分钟编译，直接用发版里编好的二进制包：
 
 ```bash
-# x86_64 换成自己的架构: aarch64 用 muse-api-0.0.2-linux-aarch64.tar.gz
-curl -fsSL https://github.com/judy-gotv/Muse/releases/download/v0.0.2/muse-api-0.0.2-linux-x86_64.tar.gz -o /tmp/muse-api.tar.gz
+# x86_64 换成自己的架构: aarch64 用 muse-api-0.0.3-linux-aarch64.tar.gz
+curl -fsSL https://github.com/judy-gotv/Muse/releases/download/v0.0.3/muse-api-0.0.3-linux-x86_64.tar.gz -o /tmp/muse-api.tar.gz
 bash /tmp/muse-api-install.sh --source /tmp/muse-api.tar.gz
 ```
 
@@ -169,7 +169,7 @@ bash /tmp/muse-api-install.sh --source /tmp/muse-api.tar.gz
 
 | 选项 | 说明 |
 |---|---|
-| `--ref v0.0.2` | 装指定分支 / tag / commit，默认 main |
+| `--ref v0.0.3` | 装指定分支 / tag / commit，默认 main |
 | `--port 18080` | 改监听端口，默认 18611 |
 | `--key <64 位 hex>` | 自己定 key，不给就自动生成（已装过会沿用 `.env` 里的） |
 | `--install-dir /opt/muse-api` | 安装目录，默认 `/opt/muse-api` |
@@ -204,10 +204,10 @@ Releases 里每个 `.tar.gz` 都是完整可运行的一套，缺一不可：
 | `.env.example` / `LICENSE` | 配置模板 / 许可证 |
 
 ```bash
-tar -xzf muse-api-0.0.2-linux-x86_64.tar.gz
-cd muse-api-0.0.2-linux-x86_64
-bash install.sh --source muse-api-0.0.2-linux-x86_64.tar.gz
-# 校验: sha256sum -c muse-api-0.0.2-linux-x86_64.tar.gz.sha256
+tar -xzf muse-api-0.0.3-linux-x86_64.tar.gz
+cd muse-api-0.0.3-linux-x86_64
+bash install.sh --source muse-api-0.0.3-linux-x86_64.tar.gz
+# 校验: sha256sum -c muse-api-0.0.3-linux-x86_64.tar.gz.sha256
 ```
 
 ## 接口
@@ -282,7 +282,7 @@ install.sh         VPS 一键安装 / uninstall.sh 卸载 / deploy/muse-api.serv
 git push origin main            # 触发 docker.yml (镜像推 GHCR) + bump-version.yml
 ```
 
-版本号自动递增：每次 push 到 main，`bump-version.yml` 会检查当前 `Cargo.toml` 的版本是否已有 tag；有就 patch +1（0.0.2 → 0.0.3）、提交、打 tag、发 Release、重建镜像；没有就直接打 tag 发版。控制台的版本号从后端实时取，自动跟随。
+版本号自动递增：每次 push 到 main，`bump-version.yml` 会检查当前 `Cargo.toml` 的版本是否已有 tag；有就 patch +1（0.0.3 → 0.0.3）、提交、打 tag、发 Release、重建镜像；没有就直接打 tag 发版。控制台的版本号从后端实时取，自动跟随。
 
 发版前核对：`Cargo.toml` 的 `version` 必须等于 tag（workflow 会校验，不一致就失败）；Release 包里 8 项文件逐项核对（workflow 里有断言）。
 

@@ -11,14 +11,14 @@
 # 用法 (root, 默认直接从本仓库拉源码构建):
 #   curl -fsSL https://raw.githubusercontent.com/judy-gotv/Muse/main/install.sh -o /tmp/muse-api-install.sh
 #   bash /tmp/muse-api-install.sh
-#   bash /tmp/muse-api-install.sh --ref v0.0.2 --port 18611
+#   bash /tmp/muse-api-install.sh --ref v0.0.3 --port 18611
 #   # 或用 Release 二进制包 (免编译, 包里含完整二进制 + install.sh + 说明):
-#   bash install.sh --source https://github.com/judy-gotv/Muse/releases/download/v0.0.2/muse-api-0.0.2-linux-x86_64.tar.gz
-#   bash install.sh --source /root/muse-api-0.0.2-src.tar.gz
+#   bash install.sh --source https://github.com/judy-gotv/Muse/releases/download/v0.0.3/muse-api-0.0.3-linux-x86_64.tar.gz
+#   bash install.sh --source /root/muse-api-0.0.3-src.tar.gz
 #
 # 选项:
 #   --source URL|PATH   源码/二进制来源, 默认 https://github.com/judy-gotv/Muse.git. 也可以用环境变量 MAPI_SOURCE
-#   --ref REF           git 分支/tag/commit, 默认 main (打 tag 发版时用 v0.0.2 这类)
+#   --ref REF           git 分支/tag/commit, 默认 main (打 tag 发版时用 v0.0.3 这类)
 #   --port PORT          默认 18611 (与 Python 版 muse2api 的 18610 错开)
 #   --key KEY            管理密钥, 不给则自动生成 64 位 hex 并只在装完打印一次
 #   --install-dir DIR    默认 /opt/muse-api
@@ -218,14 +218,14 @@ fi
 echo "==> 等待服务起来 (最多 60 秒)"
 OK=0
 for _ in $(seq 1 60); do
-  if curl -fsS -m 3 "http://127.0.0.2:$PORT/healthz" >/dev/null 2>&1; then OK=1; break; fi
+  if curl -fsS -m 3 "http://127.0.0.3:$PORT/healthz" >/dev/null 2>&1; then OK=1; break; fi
   sleep 1
 done
 [ "$OK" -eq 1 ] || { echo "服务 60 秒内没起来, 看日志: journalctl -u muse-api -n 100 --no-pager"; systemctl status muse-api --no-pager | head -n 30; exit 1; }
-echo "==> /healthz: $(curl -fsS -m 5 "http://127.0.0.2:$PORT/healthz")"
-echo "==> /admin/update/check: $(curl -fsS -m 5 "http://127.0.0.2:$PORT/admin/update/check")"
+echo "==> /healthz: $(curl -fsS -m 5 "http://127.0.0.3:$PORT/healthz")"
+echo "==> /admin/update/check: $(curl -fsS -m 5 "http://127.0.0.3:$PORT/admin/update/check")"
 if [ "$WITH_REMOTE_IMPORT" -eq 1 ]; then
-  echo "==> /admin/remote-import: $(curl -fsS -m 5 "http://127.0.0.2:$PORT/admin/remote-import" | head -c 400)"
+  echo "==> /admin/remote-import: $(curl -fsS -m 5 "http://127.0.0.3:$PORT/admin/remote-import" | head -c 400)"
 fi
 IP="$(curl -fsS -m 5 https://api.ipify.org 2>/dev/null || hostname -I | awk '{print $1}')"
 echo
